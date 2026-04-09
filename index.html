@@ -656,14 +656,23 @@ async function fetchLive() {
   const btn = document.getElementById('syncBtn');
   btn.disabled = true; btn.textContent = '↻ Hämtar...';
   try {
+    console.log('Fetching ESPN direct...');
     const r = await fetch('https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard?limit=200');
+    console.log('ESPN response status:', r.status);
     if (!r.ok) throw new Error(r.status);
-    processESPN(await r.json());
-  } catch {
+    const json = await r.json();
+    console.log('ESPN events count:', json.events?.length);
+    processESPN(json);
+  } catch(e) {
+    console.warn('Direct ESPN failed:', e.message, '— trying proxy...');
     try {
       const r2 = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent('https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard?limit=200'));
-      processESPN(await r2.json());
-    } catch {
+      console.log('Proxy response status:', r2.status);
+      const json2 = await r2.json();
+      console.log('Proxy ESPN events count:', json2.events?.length);
+      processESPN(json2);
+    } catch(e2) {
+      console.error('Both ESPN fetches failed:', e2.message);
       toast('Kunde inte nå ESPN — kontrollera nätverket');
       btn.disabled = false; btn.textContent = '⚡ Live sync';
     }
@@ -688,12 +697,16 @@ function processESPN(data) {
 
   (comp.competitors || []).forEach(c => {
     const name = normName(c.athlete?.displayName || '');
-    const mc = (c.status?.type?.name||'').toLowerCase().includes('cut') ||
-               (c.status?.type?.name||'') === 'STATUS_MISSED_CUT';
     const statusName = c.status?.type?.name || '';
-    const finished = statusName === 'STATUS_PLAY_COMPLETE' ||
-                     statusName === 'STATUS_MISSED_CUT' ||
-                     (c.status?.type?.completed === true);
+    const mc = statusName === 'STATUS_MISSED_CUT' ||
+               statusName.toLowerCase().includes('cut');
+    // Finished = has scores but is NOT currently in progress on the course
+    const isActive = statusName === 'STATUS_IN_PROGRESS' || statusName === 'STATUS_ACTIVE';
+    const hasAnyScore = (c.linescores||[]).some(ls => {
+      const v = String(ls.displayValue ?? ls.value ?? '').trim();
+      return v && v !== '-' && v !== '';
+    });
+    const finished = hasAnyScore && !isActive;
 
     // Parse score vs par from displayValue string — most reliable across all ESPN formats
     // displayValue is "E", "-3", "+2" etc — always correct for the current state
@@ -721,6 +734,9 @@ function processESPN(data) {
     const total = parseDisplayScore(c.score?.displayValue ?? c.score?.value);
 
     newData[name] = { rounds, total, mc, finished };
+    if (Object.keys(newData).length <= 3) {
+      console.log(`${name} | status: "${statusName}" | isActive: ${isActive} | hasScore: ${hasAnyScore} | finished: ${finished}`);
+    }
   });
 
   liveData = newData;
