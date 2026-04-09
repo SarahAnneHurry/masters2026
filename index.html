@@ -336,6 +336,7 @@ function render() {
       const tdPl = document.createElement('td');
       tdPl.className = 'player-name';
       tdPl.textContent = plName || '–';
+      tdPl.dataset.col = 'naam'; // never hidden by filter
       tr.appendChild(tdPl);
 
       // R1–R4
@@ -345,11 +346,8 @@ function render() {
         td.className = `score-cell ${scoreClass(s)}`;
         td.textContent = s !== null ? fmtScore(s) : '–';
         td.title = 'Klicka för att redigera';
+        td.dataset.col = `r${r+1}`; // tag for filtering
         td.onclick = () => openModal(pi, pli);
-        // Hide if round filter active
-        if (currentRoundFilter > 0 && currentRoundFilter !== r+1) {
-          td.style.display = 'none';
-        }
         tr.appendChild(td);
       });
 
@@ -358,6 +356,7 @@ function render() {
       const tdTot = document.createElement('td');
       tdTot.className = `tot-cell ${scoreClass(tot)}`;
       tdTot.textContent = fmtScore(tot);
+      tdTot.dataset.col = 'tot'; // tag for filtering
       tr.appendChild(tdTot);
     });
 
@@ -375,25 +374,34 @@ function setRound(r) {
 
 function applyRoundFilter() {
   const r = currentRoundFilter;
-  // hdrRow2 contains: for each of 5 players → Namn, R1, R2, R3, R4, Tot (6 cells each)
+
+  // Tag header row 2 cells with data-col on first call
   const hdrCells = document.querySelectorAll('#hdrRow2 th');
   hdrCells.forEach((th, idx) => {
-    const posInGroup = idx % 6; // 0=Namn, 1=R1, 2=R2, 3=R3, 4=R4, 5=Tot
+    const pos = idx % 6; // 0=Naam,1=R1,2=R2,3=R3,4=R4,5=Tot
+    if (!th.dataset.col) {
+      th.dataset.col = ['naam','r1','r2','r3','r4','tot'][pos];
+    }
     if (r === 0) {
-      th.style.display = ''; // show all
+      th.style.display = '';
     } else {
-      // show Namn (0), the selected round (posInGroup === r), hide others
-      // hide Tot when showing single round (redundant)
-      if (posInGroup === 0) th.style.display = '';
-      else if (posInGroup === r) th.style.display = '';
-      else th.style.display = 'none';
+      // show: player name col (pos 0) + selected round, hide everything else incl Tot
+      th.style.display = (pos === 0 || th.dataset.col === `r${r}`) ? '' : 'none';
     }
   });
 
-  // Also hide the Spelare N colspan headers for hidden columns — adjust colspan
-  const hdr1Cells = document.querySelectorAll('#hdrRow1 th.player-hdr');
-  hdr1Cells.forEach(th => {
-    th.colSpan = r === 0 ? 6 : 2; // Namn + 1 round when filtered
+  // Adjust colspan on player group headers
+  document.querySelectorAll('#hdrRow1 th.player-hdr').forEach(th => {
+    th.colSpan = r === 0 ? 6 : 2;
+  });
+
+  // Show/hide data cells by data-col tag
+  document.querySelectorAll('tbody td[data-col]').forEach(td => {
+    if (r === 0) {
+      td.style.display = '';
+    } else {
+      td.style.display = (td.dataset.col === `r${r}`) ? '' : 'none';
+    }
   });
 }
 
