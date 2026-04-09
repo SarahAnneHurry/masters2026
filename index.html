@@ -392,6 +392,12 @@ function render() {
 }
 
 // ── MOBILE CARD RENDER ─────────────────────────────────────────────────
+function counting(pi){
+  const s=PARTICIPANTS[pi].players.map((pl,pli)=>pl?[pl,playerTotal(pi,pli)]:[null,null]).filter(([n,t])=>n&&t!==null&&t!=='MC'&&!isNaN(t));
+  s.sort((a,b)=>a[1]-b[1]);
+  return s.slice(0,3).map(([n])=>n);
+}
+
 function renderCards() {
   const wrap = document.getElementById('cardsWrap');
   if (!wrap) return;
@@ -411,7 +417,8 @@ function renderCards() {
     const posClass  = rank===0?'p1':rank===1?'p2':rank===2?'p3':'';
     const scoreClass2 = score===null?'empty':scoreClass(score);
 
-    const playerRows = p.players.filter(pl=>pl).map((pl,pli) => {
+    const playerRows = p.players.map((pl, pli) => {
+      if (!pl) return '';
       const tot = playerTotal(pi, pli);
       const isCnt = cnt.includes(pl);
       const rounds = [0,1,2,3].map(r => {
@@ -449,11 +456,6 @@ function renderCards() {
   }).join('');
 }
 
-function counting(pi){
-  const s=PARTICIPANTS[pi].players.map((pl,pli)=>pl?[pl,playerTotal(pi,pli)]:[null,null]).filter(([n,t])=>n&&t!==null&&t!=='MC'&&!isNaN(t));
-  s.sort((a,b)=>a[1]-b[1]);
-  return s.slice(0,3).map(([n])=>n);
-}
 function setRound(r) {
   currentRoundFilter = r;
   document.querySelectorAll('.round-btn').forEach((b,i) => b.classList.toggle('active', i===r));
@@ -490,7 +492,9 @@ function applyRoundFilter() {
     if (r === 0) {
       td.style.display = '';
     } else {
-      td.style.display = (td.dataset.col === `r${r}`) ? '' : 'none';
+      // Always show player name cells; show only the selected round; hide tot and other rounds
+      const col = td.dataset.col;
+      td.style.display = (col === 'naam' || col === `r${r}`) ? '' : 'none';
     }
   });
 }
