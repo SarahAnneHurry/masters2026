@@ -656,17 +656,52 @@ function processESPN(data) {
 
   (comp.competitors || []).forEach(c => {
     const name = normName(c.athlete?.displayName || '');
-    const ls = c.linescores || [];
+    const mc = (c.status?.type?.name||'').toLowerCase().includes('cut') ||
+               (c.status?.type?.name||'') === 'STATUS_MISSED_CUT';
+
+    // ESPN scorecards: c.scorecards[] has one entry per round with a 'value' (round score vs par)
+    // c.score.value is the total tournament score vs par
+    // c.linescores[] during R1 = hole-by-hole, NOT round scores — don't use for round totals
+
     const rounds = {};
-    ls.forEach((r, i) => {
-      if (r.value !== null && r.value !== undefined && !isNaN(r.value)) {
-        rounds[i+1] = Number(r.value);
+    // Try scorecards first (completed rounds)
+    const scorecards = c.scorecards || [];
+    scorecards.forEach((sc, i) => {
+      if (sc.value !== null && sc.value !== undefined && !isNaN(sc.value)) {
+        rounds[i+1] = Number(sc.value);
         if (i+1 > maxRound) maxRound = i+1;
       }
     });
-    const mc = (c.status?.type?.name||'').toLowerCase().includes('cut') ||
-               (c.status?.type?.name||'') === 'STATUS_MISSED_CUT';
-    newData[name] = { rounds, total: c.score?.value !== undefined ? Number(c.score.value) : null, mc };
+
+    // If no scorecards, fall back to linescores but treat them as round scores
+    // (ESPN uses linescores for completed rounds on the scoreboard endpoint)
+    if (scorecards.length === 0) {
+      const ls = c.linescores || [];
+      // Only use if values look like round scores (typically -10 to +20 range)
+      // not hole scores (which would be 1-8 typically)
+      ls.forEach((r, i) => {
+        const val = Number(r.value);
+        if (r.value !== null && r.value !== undefined && !isNaN(val) && val >= -20 && val <= 30) {
+          rounds[i+1] = val;
+          if (i+1 > maxRound) maxRound = i+1;
+        }
+      });
+    }
+
+    // Use ESPN's total score directly — most reliable for current standing
+    const total = c.score?.value !== undefined ? Number(c.score.value) : null;
+
+    // For in-progress round: if we only have 1 round and total is available,
+    // use total as the R1 score (it's the live cumulative score)
+    if (Object.keys(rounds).length === 0 && total !== null) {
+      rounds[1] = total;
+      maxRound = 1;
+    } else if (Object.keys(rounds).length === 1 && total !== null) {
+      // Single round in progress — total IS the R1 score
+      rounds[1] = total;
+    }
+
+    newData[name] = { rounds, total, mc };
   });
 
   liveData = newData;
@@ -698,12 +733,11 @@ function setManualScore(pi, pli, round, val) {
 function applyLiveToScores(maxRound) {
   PARTICIPANTS.forEach((p, pi) => {
     p.players.forEach((plName, pli) => {
-      if (!plName || !plName.trim()) return; // skip empty slots
-      // Find in liveData — exact match first, then last-name fuzzy
+      if (!plName || !plName.trim()) return;
       let ld = liveData[plName];
       if (!ld) {
         const last = plName.split(' ').pop().toLowerCase();
-        if (last.length < 3) return; // avoid matching very short names
+        if (last.length < 3) return;
         const key = Object.keys(liveData).find(k => k.toLowerCase().endsWith(last));
         if (key) ld = liveData[key];
       }
@@ -711,9 +745,12 @@ function applyLiveToScores(maxRound) {
 
       for (let r = 1; r <= 4; r++) {
         const key = `${pi}_${pli}_${r-1}`;
-        if (manualOverrides[key]) continue; // preserve manual edits
+        if (manualOverrides[key]) continue;
         if (ld.mc && r >= 3) {
           scores[pi][pli][r-1] = 'MC';
+        } else if (r === maxRound && ld.total !== null) {
+          // For the current active round, use ESPN's live total directly
+          scores[pi][pli][r-1] = ld.total;
         } else if (ld.rounds[r] !== undefined) {
           scores[pi][pli][r-1] = ld.rounds[r];
         }
