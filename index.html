@@ -109,7 +109,10 @@ tbody tr.rank3 td:first-child{border-left:3px solid #cd7f32}
   .legend span:last-child{display:none}
 }
 
-/* ── Modal ── */
+/* finished round indicator */
+.fin-badge{display:inline-block;font-size:8px;font-family:'DM Mono',monospace;font-weight:600;color:#166534;background:#dcfce7;border:1px solid #86efac;border-radius:3px;padding:1px 4px;margin-left:5px;vertical-align:middle;letter-spacing:.03em}
+td.player-name.done{background:#f0fdf4!important}
+.card-player-name.done{color:#166534}
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:100;align-items:center;justify-content:center}
 .modal-overlay.open{display:flex}
 .modal{background:#fff;border-radius:12px;padding:20px;width:320px;max-width:95vw}
@@ -260,6 +263,19 @@ PARTICIPANTS[0].players.forEach((_, pi) => {
 // ── Score helpers ──────────────────────────────────────────────────────
 function getScore(pi, pli, round) { return scores[pi][pli][round]; }
 
+function isFinished(plName) {
+  if (!plName) return false;
+  let ld = liveData[plName];
+  if (!ld) {
+    const last = plName.split(' ').pop().toLowerCase();
+    if (last.length >= 3) {
+      const key = Object.keys(liveData).find(k => k.toLowerCase().endsWith(last));
+      if (key) ld = liveData[key];
+    }
+  }
+  return ld?.finished || ld?.mc || false;
+}
+
 function playerTotal(pi, pli) {
   const s = scores[pi][pli];
   if (s.every(v => v === null)) return null;
@@ -307,12 +323,20 @@ function scoreClass(s) {
 
 // ── Render ─────────────────────────────────────────────────────────────
 function render() {
-  // Sort by score
+  // Sort by Top3, then P4 tiebreaker, then P5 tiebreaker
   const order = PARTICIPANTS.map((_,i)=>i).sort((a,b)=>{
     const sa=participantScore(a), sb=participantScore(b);
     if(sa===null&&sb===null) return 0;
     if(sa===null) return 1; if(sb===null) return -1;
-    return sa-sb;
+    if(sa!==sb) return sa-sb;
+    // Tied on Top3 — use P4
+    const [a4,a5]=participantP45(a), [b4,b5]=participantP45(b);
+    if(a4!==null&&b4!==null&&a4!==b4) return a4-b4;
+    if(a4!==null&&b4===null) return -1;
+    if(a4===null&&b4!==null) return 1;
+    // Still tied — use P5
+    if(a5!==null&&b5!==null&&a5!==b5) return a5-b5;
+    return 0;
   });
 
   const tbody = document.getElementById('tbody');
@@ -362,9 +386,10 @@ function render() {
     p.players.forEach((plName, pli) => {
       // Name
       const tdPl = document.createElement('td');
-      tdPl.className = 'player-name';
-      tdPl.textContent = plName || '–';
-      tdPl.dataset.col = 'naam'; // never hidden by filter
+      const fin = isFinished(plName);
+      tdPl.className = `player-name${fin ? ' done' : ''}`;
+      tdPl.innerHTML = (plName || '–') + (fin ? '<span class="fin-badge">✓ F</span>' : '');
+      tdPl.dataset.col = 'naam';
       tr.appendChild(tdPl);
 
       // R1–R4
@@ -406,7 +431,13 @@ function renderCards() {
     const sa=participantScore(a), sb=participantScore(b);
     if(sa===null&&sb===null) return 0;
     if(sa===null) return 1; if(sb===null) return -1;
-    return sa-sb;
+    if(sa!==sb) return sa-sb;
+    const [a4,a5]=participantP45(a), [b4,b5]=participantP45(b);
+    if(a4!==null&&b4!==null&&a4!==b4) return a4-b4;
+    if(a4!==null&&b4===null) return -1;
+    if(a4===null&&b4!==null) return 1;
+    if(a5!==null&&b5!==null&&a5!==b5) return a5-b5;
+    return 0;
   });
 
   wrap.innerHTML = order.map((pi, rank) => {
@@ -422,6 +453,7 @@ function renderCards() {
       if (!pl) return '';
       const tot = playerTotal(pi, pli);
       const isCnt = cnt.includes(pl);
+      const fin = isFinished(pl);
       const rounds = [0,1,2,3].map(r => {
         const s = getScore(pi, pli, r);
         if (currentRoundFilter > 0 && currentRoundFilter !== r+1) return '';
@@ -430,7 +462,7 @@ function renderCards() {
       const totCell = `<span class="card-player-tot ${scoreClass(tot)}">${fmtScore(tot)}</span>`;
       return `<div class="card-player-row">
         ${isCnt?'<span class="counting-dot"></span>':'<span style="width:7px;flex-shrink:0"></span>'}
-        <span class="card-player-name">${pl.replace(' (a)','')}</span>
+        <span class="card-player-name${fin?' done':''}">${pl.replace(' (a)','')}${fin?'<span class="fin-badge">✓ F</span>':''}</span>
         ${currentRoundFilter===0 ? rounds+totCell : rounds}
       </div>`;
     }).join('');
@@ -521,7 +553,7 @@ function saveScore() {
     const val = document.getElementById(`inp${r}`).value.trim();
     setManualScore(editingP, editingPl, r-1, val === '' ? null : parseInt(val));
   });
-  closeModal(); render(); autoSave();
+  closeModal(); render(); renderCards(); autoSave();
 }
 
 function setMC() {
@@ -532,7 +564,7 @@ function setMC() {
   setManualScore(editingP, editingPl, 1, r2 !== '' ? parseInt(r2) : null);
   setManualScore(editingP, editingPl, 2, 'MC');
   setManualScore(editingP, editingPl, 3, 'MC');
-  closeModal(); render(); autoSave();
+  closeModal(); render(); renderCards(); autoSave();
   toast('MC markerad');
 }
 
@@ -658,6 +690,10 @@ function processESPN(data) {
     const name = normName(c.athlete?.displayName || '');
     const mc = (c.status?.type?.name||'').toLowerCase().includes('cut') ||
                (c.status?.type?.name||'') === 'STATUS_MISSED_CUT';
+    const statusName = c.status?.type?.name || '';
+    const finished = statusName === 'STATUS_PLAY_COMPLETE' ||
+                     statusName === 'STATUS_MISSED_CUT' ||
+                     (c.status?.type?.completed === true);
 
     // Parse score vs par from displayValue string — most reliable across all ESPN formats
     // displayValue is "E", "-3", "+2" etc — always correct for the current state
@@ -684,7 +720,7 @@ function processESPN(data) {
     // Total tournament score — also use displayValue
     const total = parseDisplayScore(c.score?.displayValue ?? c.score?.value);
 
-    newData[name] = { rounds, total, mc };
+    newData[name] = { rounds, total, mc, finished };
   });
 
   liveData = newData;
@@ -731,11 +767,11 @@ function applyLiveToScores(maxRound) {
         if (manualOverrides[key]) continue;
         if (ld.mc && r >= 3) {
           scores[pi][pli][r-1] = 'MC';
-        } else if (r === maxRound && ld.total !== null) {
-          // For the current active round, use ESPN's live total directly
-          scores[pi][pli][r-1] = ld.total;
         } else if (ld.rounds[r] !== undefined) {
           scores[pi][pli][r-1] = ld.rounds[r];
+        } else if (r === maxRound && ld.total !== null && Object.keys(ld.rounds).length === 0) {
+          // Only fall back to total if we have NO round data at all (first holes of R1)
+          scores[pi][pli][r-1] = ld.total;
         }
       }
     });
