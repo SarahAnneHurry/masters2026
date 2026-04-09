@@ -244,7 +244,8 @@ function playerTotal(pi, pli) {
 }
 
 function participantScore(pi) {
-  const totals = PARTICIPANTS[pi].players.map((_,pli) => playerTotal(pi,pli))
+  const totals = PARTICIPANTS[pi].players
+    .map((_,pli) => PARTICIPANTS[pi].players[pli] ? playerTotal(pi,pli) : null)
     .filter(t => t !== null && t !== 'MC' && !isNaN(t));
   if (!totals.length) return null;
   totals.sort((a,b)=>a-b);
@@ -252,7 +253,8 @@ function participantScore(pi) {
 }
 
 function participantP45(pi) {
-  const totals = PARTICIPANTS[pi].players.map((_,pli) => playerTotal(pi,pli))
+  const totals = PARTICIPANTS[pi].players
+    .map((_,pli) => PARTICIPANTS[pi].players[pli] ? playerTotal(pi,pli) : null)
     .filter(t => t !== null && t !== 'MC' && !isNaN(t));
   totals.sort((a,b)=>a-b);
   return [totals[3]??null, totals[4]??null];
@@ -366,8 +368,33 @@ function render() {
 // ── Round filter ───────────────────────────────────────────────────────
 function setRound(r) {
   currentRoundFilter = r;
-  document.querySelectorAll('.round-btn').forEach((b,i)=>b.classList.toggle('active',i===r));
+  document.querySelectorAll('.round-btn').forEach((b,i) => b.classList.toggle('active', i===r));
   render();
+  applyRoundFilter();
+}
+
+function applyRoundFilter() {
+  const r = currentRoundFilter;
+  // hdrRow2 contains: for each of 5 players → Namn, R1, R2, R3, R4, Tot (6 cells each)
+  const hdrCells = document.querySelectorAll('#hdrRow2 th');
+  hdrCells.forEach((th, idx) => {
+    const posInGroup = idx % 6; // 0=Namn, 1=R1, 2=R2, 3=R3, 4=R4, 5=Tot
+    if (r === 0) {
+      th.style.display = ''; // show all
+    } else {
+      // show Namn (0), the selected round (posInGroup === r), hide others
+      // hide Tot when showing single round (redundant)
+      if (posInGroup === 0) th.style.display = '';
+      else if (posInGroup === r) th.style.display = '';
+      else th.style.display = 'none';
+    }
+  });
+
+  // Also hide the Spelare N colspan headers for hidden columns — adjust colspan
+  const hdr1Cells = document.querySelectorAll('#hdrRow1 th.player-hdr');
+  hdr1Cells.forEach(th => {
+    th.colSpan = r === 0 ? 6 : 2; // Namn + 1 round when filtered
+  });
 }
 
 // ── Edit modal ─────────────────────────────────────────────────────────
@@ -557,6 +584,7 @@ function processESPN(data) {
   document.getElementById('syncBtn').textContent = '⚡ Live sync';
 
   render();
+  applyRoundFilter();
   autoSave();
   toast(`✓ Live-poäng uppdaterade — Runda ${maxRound}`);
 }
@@ -613,6 +641,7 @@ if (saved) {
 const savedOverrides = localStorage.getItem('masters2026_overrides');
 if (savedOverrides) { try { Object.assign(manualOverrides, JSON.parse(savedOverrides)); } catch {} }
 render();
+applyRoundFilter();
 // Auto-fetch on load if during tournament hours
 const _now = new Date(), _h = _now.getUTCHours() + 2, _day = _now.getUTCDay();
 if ([4,5,6,0].includes(_day) && _h >= 13 && _h <= 23) fetchLive();
