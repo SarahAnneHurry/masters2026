@@ -888,165 +888,174 @@ applyRoundFilter();
 // Auto-fetch on load if during tournament hours
 const _now = new Date(), _h = _now.getUTCHours() + 2, _day = _now.getUTCDay();
 if ([4,5,6,0].includes(_day) && _h >= 13 && _h <= 23) fetchLive();
+// ── Safe stubs — replaced by Firebase module once loaded ──────────────
+// Prevents "function not defined" errors if user clicks before module initialises
+window.setChatName = window.changeChatName = window.sendChatMsg =
+window.toggleChat = window.toggleEmoji = function(){};
 </script>
 
 <!-- Firebase -->
 <script type="module">
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getDatabase, ref, push, onChildAdded, serverTimestamp }
-  from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
+const FB_URL = 'https://masters2026-97107-default-rtdb.europe-west1.firebasedatabase.app';
 
-const firebaseConfig = {
-  databaseURL: 'https://masters2026-97107-default-rtdb.europe-west1.firebasedatabase.app'
-};
-const app = initializeApp(firebaseConfig);
-const db  = getDatabase(app);
-const msgsRef = ref(db, 'chat/masters2026');
+async function initFirebase() {
+  try {
+    const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js');
+    const { getDatabase, ref, push, onChildAdded, serverTimestamp } =
+      await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js');
 
-// ── Chat state ──────────────────────────────────────────────────────────
-let chatName = localStorage.getItem('masters2026_chatname') || '';
-let chatOpen = true;
-let msgCount = 0;
-let unreadCount = 0;
-let initialLoad = true; // don't count existing messages as unread on first load
+    const app = initializeApp({ databaseURL: FB_URL });
+    const db  = getDatabase(app);
+    const msgsRef = ref(db, 'chat/masters2026');
 
-function updateUnreadBadge() {
-  const badge = document.getElementById('unreadBadge');
-  const btnBadge = document.getElementById('chatBtnBadge');
-  const show = !chatOpen && unreadCount > 0;
-  const label = unreadCount > 99 ? '99+' : String(unreadCount);
+    // ── State ──────────────────────────────────────────────────────────
+    let chatName = localStorage.getItem('masters2026_chatname') || '';
+    let chatOpen = true;
+    let unreadCount = 0;
+    let initialLoad = true;
 
-  [badge, btnBadge].forEach(el => {
-    if (!el) return;
-    if (show) {
-      el.style.display = 'block';
-      el.textContent = label;
-      el.style.animation = 'none';
-      el.offsetHeight;
-      el.style.animation = 'badgePop .2s ease';
-    } else {
-      el.style.display = 'none';
+    // ── Unread badge ───────────────────────────────────────────────────
+    function updateUnreadBadge() {
+      const show = !chatOpen && unreadCount > 0;
+      const label = unreadCount > 99 ? '99+' : String(unreadCount);
+      ['unreadBadge','chatBtnBadge'].forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        if (show) {
+          el.style.display = 'block';
+          el.textContent = label;
+          el.style.animation = 'none';
+          el.offsetHeight;
+          el.style.animation = 'badgePop .2s ease';
+        } else {
+          el.style.display = 'none';
+        }
+      });
     }
-  });
-}
 
-function initChat() {
-  if (chatName) showLoggedIn();
-  else showNameBar();
-
-  // Listen for new messages in real time
-  onChildAdded(msgsRef, snap => {
-    const msg = snap.val();
-    if (!msg) return;
-    msgCount++;
-    const empty = document.getElementById('chatEmpty');
-    if (empty) empty.remove();
-    appendMsg(msg);
-    // Count as unread only if chat is collapsed and message is not from initial load
-    if (!initialLoad && !chatOpen) {
-      unreadCount++;
-      updateUnreadBadge();
+    // ── Show/hide name bar ─────────────────────────────────────────────
+    function showNameBar() {
+      document.getElementById('chatNameBar').style.display = 'flex';
+      document.getElementById('chatLoggedBar').style.display = 'none';
+      document.getElementById('chatSendBtn').disabled = true;
+      document.getElementById('chatInput').disabled = true;
+      setTimeout(() => document.getElementById('chatNameInput').focus(), 50);
     }
-  });
-  // After a short delay, mark initial load as done so new messages trigger the badge
-  setTimeout(() => { initialLoad = false; }, 2000);
-}
 
-function showNameBar() {
-  document.getElementById('chatNameBar').style.display = 'flex';
-  document.getElementById('chatLoggedBar').style.display = 'none';
-  document.getElementById('chatSendBtn').disabled = true;
-  document.getElementById('chatInput').disabled = true;
-  document.getElementById('chatNameInput').focus();
-}
+    function showLoggedIn() {
+      document.getElementById('chatNameBar').style.display = 'none';
+      document.getElementById('chatLoggedBar').style.display = 'flex';
+      document.getElementById('chatNameDisplay').textContent = chatName;
+      document.getElementById('chatSendBtn').disabled = false;
+      document.getElementById('chatInput').disabled = false;
+    }
 
-function showLoggedIn() {
-  document.getElementById('chatNameBar').style.display = 'none';
-  document.getElementById('chatLoggedBar').style.display = 'flex';
-  document.getElementById('chatNameDisplay').textContent = chatName;
-  document.getElementById('chatSendBtn').disabled = false;
-  document.getElementById('chatInput').disabled = false;
-  document.getElementById('chatInput').focus();
-}
+    // ── Helpers ────────────────────────────────────────────────────────
+    function escHtml(s) {
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
 
-window.setChatName = function() {
-  const val = document.getElementById('chatNameInput').value.trim();
-  if (!val) return;
-  chatName = val;
-  localStorage.setItem('masters2026_chatname', chatName);
-  showLoggedIn();
-};
+    function appendMsg(msg) {
+      const box = document.getElementById('chatMessages');
+      const isMine = msg.name === chatName;
+      const time = msg.ts ? new Date(msg.ts).toLocaleTimeString('sv-SE',{hour:'2-digit',minute:'2-digit'}) : '';
+      const empty = document.getElementById('chatEmpty');
+      if (empty) empty.remove();
+      const div = document.createElement('div');
+      div.className = `chat-msg${isMine?' mine':''}`;
+      div.innerHTML = `
+        <div class="chat-msg-header">
+          <span class="chat-msg-name">${escHtml(msg.name)}</span>
+          <span class="chat-msg-time">${time}</span>
+        </div>
+        <div class="chat-msg-text">${escHtml(msg.text)}</div>`;
+      box.appendChild(div);
+      box.scrollTop = box.scrollHeight;
+    }
 
-window.changeChatName = function() {
-  chatName = '';
-  localStorage.removeItem('masters2026_chatname');
-  document.getElementById('chatNameInput').value = '';
-  showNameBar();
-};
+    // ── Global functions ───────────────────────────────────────────────
+    window.setChatName = function() {
+      const val = document.getElementById('chatNameInput').value.trim();
+      if (!val) return;
+      chatName = val;
+      localStorage.setItem('masters2026_chatname', chatName);
+      showLoggedIn();
+    };
 
-window.sendChatMsg = function() {
-  const inp = document.getElementById('chatInput');
-  const text = inp.value.trim();
-  if (!text || !chatName) return;
-  push(msgsRef, { name: chatName, text, ts: serverTimestamp() });
-  inp.value = '';
-  inp.style.height = 'auto';
-  // Close emoji picker after sending
-  const picker = document.getElementById('emojiPicker');
-  if (picker) picker.style.display = 'none';
-};
+    window.changeChatName = function() {
+      chatName = '';
+      localStorage.removeItem('masters2026_chatname');
+      document.getElementById('chatNameInput').value = '';
+      showNameBar();
+    };
 
-function appendMsg(msg) {
-  const box = document.getElementById('chatMessages');
-  const isMine = msg.name === chatName;
-  const time = msg.ts ? new Date(msg.ts).toLocaleTimeString('sv-SE', {hour:'2-digit',minute:'2-digit'}) : '';
-  const div = document.createElement('div');
-  div.className = `chat-msg${isMine?' mine':''}`;
-  div.innerHTML = `
-    <div class="chat-msg-header">
-      <span class="chat-msg-name">${escHtml(msg.name)}</span>
-      <span class="chat-msg-time">${time}</span>
-    </div>
-    <div class="chat-msg-text">${escHtml(msg.text)}</div>`;
-  box.appendChild(div);
-  box.scrollTop = box.scrollHeight;
-}
+    window.sendChatMsg = function() {
+      const inp = document.getElementById('chatInput');
+      const text = inp.value.trim();
+      if (!text || !chatName) return;
+      push(msgsRef, { name: chatName, text, ts: serverTimestamp() });
+      inp.value = '';
+      inp.style.height = 'auto';
+      const picker = document.getElementById('emojiPicker');
+      if (picker) picker.style.display = 'none';
+    };
 
-function escHtml(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
+    window.toggleChat = function() {
+      chatOpen = !chatOpen;
+      document.getElementById('chatBody').style.display = chatOpen ? 'flex' : 'none';
+      document.getElementById('chatToggleLbl').textContent = chatOpen ? '▲ Dölj' : '▼ Visa';
+      if (chatOpen) {
+        unreadCount = 0;
+        updateUnreadBadge();
+        const box = document.getElementById('chatMessages');
+        if (box) box.scrollTop = box.scrollHeight;
+      }
+    };
 
-window.toggleEmoji = function() {
-  const picker = document.getElementById('emojiPicker');
-  picker.style.display = picker.style.display === 'none' ? 'flex' : 'none';
-};
+    window.toggleEmoji = function() {
+      const picker = document.getElementById('emojiPicker');
+      if (picker) picker.style.display = picker.style.display === 'none' ? 'flex' : 'none';
+    };
 
-// Clicking an emoji inserts it into the input
-document.getElementById('emojiPicker').addEventListener('click', e => {
-  const span = e.target.closest('span');
-  if (!span) return;
-  const emoji = span.textContent.trim();
-  if (!emoji) return;
-  const inp = document.getElementById('chatInput');
-  const pos = inp.selectionStart ?? inp.value.length;
-  inp.value = inp.value.slice(0, pos) + emoji + inp.value.slice(pos);
-  inp.selectionStart = inp.selectionEnd = pos + emoji.length;
-  inp.focus();
-  inp.dispatchEvent(new Event('input'));
-});
-  chatOpen = !chatOpen;
-  document.getElementById('chatBody').style.display = chatOpen ? 'flex' : 'none';
-  document.getElementById('chatToggleLbl').textContent = chatOpen ? '▲ Dölj' : '▼ Visa';
-  if (chatOpen) {
-    unreadCount = 0;
-    updateUnreadBadge();
-    // Scroll to bottom when reopening
-    const box = document.getElementById('chatMessages');
-    if (box) box.scrollTop = box.scrollHeight;
+    // Emoji click handler
+    document.getElementById('emojiPicker').addEventListener('click', e => {
+      const span = e.target.closest('span');
+      if (!span) return;
+      const emoji = span.textContent.trim();
+      if (!emoji) return;
+      const inp = document.getElementById('chatInput');
+      const pos = inp.selectionStart ?? inp.value.length;
+      inp.value = inp.value.slice(0, pos) + emoji + inp.value.slice(pos);
+      inp.selectionStart = inp.selectionEnd = pos + emoji.length;
+      inp.focus();
+      inp.dispatchEvent(new Event('input'));
+    });
+
+    // ── Listen for messages ────────────────────────────────────────────
+    onChildAdded(msgsRef, snap => {
+      const msg = snap.val();
+      if (!msg) return;
+      appendMsg(msg);
+      if (!initialLoad && !chatOpen) {
+        unreadCount++;
+        updateUnreadBadge();
+      }
+    });
+    setTimeout(() => { initialLoad = false; }, 2000);
+
+    // ── Init ───────────────────────────────────────────────────────────
+    if (chatName) showLoggedIn();
+    else showNameBar();
+
+  } catch(err) {
+    console.error('Firebase failed to load:', err);
+    // Show friendly error in chat area
+    const bar = document.getElementById('chatNameBar');
+    if (bar) bar.innerHTML = '<div style="padding:10px;color:#9f1239;font-size:12px;font-family:\'DM Mono\',monospace">⚠️ Chatten kunde inte laddas. Kontrollera din anslutning.</div>';
   }
-};
+}
 
-initChat();
+initFirebase();
 </script>
 </body>
 </html>
