@@ -178,6 +178,7 @@ td.player-name.done{background:#f0fdf4!important}
   <div class="page-controls">
     <button class="btn btn-green" id="syncBtn" onclick="fetchLive()">⚡ Live sync</button>
     <button class="btn btn-gold" onclick="downloadPNG()">⬇ Spara bild</button>
+    <button class="btn btn-gold" onclick="scrollToChat()" id="chatBtn" style="position:relative">💬 Gruppchat<span id="chatBtnBadge" style="display:none;position:absolute;top:-5px;right:-5px;background:#ef4444;color:#fff;font-family:'DM Mono',monospace;font-size:9px;font-weight:700;padding:1px 5px;border-radius:20px;min-width:16px;text-align:center;animation:badgePop .2s ease"></span></button>
     <button class="btn btn-ghost" onclick="saveData()">💾 Spara</button>
     <button class="btn btn-ghost" onclick="loadData()">📂 Ladda</button>
     <button class="btn btn-ghost" onclick="window.print()">🖨 Skriv ut</button>
@@ -248,7 +249,12 @@ td.player-name.done{background:#f0fdf4!important}
     <div class="chat-messages" id="chatMessages">
       <div class="chat-empty" id="chatEmpty">Inga meddelanden ännu — var först! 🏌️</div>
     </div>
+    <!-- Emoji picker -->
+    <div id="emojiPicker" style="display:none;flex-wrap:wrap;gap:2px;padding:8px 12px;border-top:1px solid var(--border);background:#fafaf8;max-height:100px;overflow-y:auto">
+      <span style="cursor:pointer;font-size:18px;padding:2px 3px;border-radius:4px" onmouseover="this.style.background='#e5e7eb'" onmouseout="this.style.background='none'">⛳</span><span style="cursor:pointer;font-size:18px;padding:2px 3px;border-radius:4px" onmouseover="this.style.background='#e5e7eb'" onmouseout="this.style.background='none'">🏌️</span><span style="cursor:pointer;font-size:18px;padding:2px 3px;border-radius:4px" onmouseover="this.style.background='#e5e7eb'" onmouseout="this.style.background='none'">🏆</span><span style="cursor:pointer;font-size:18px;padding:2px 3px;border-radius:4px" onmouseover="this.style.background='#e5e7eb'" onmouseout="this.style.background='none'">🥇</span><span style="cursor:pointer;font-size:18px;padding:2px 3px;border-radius:4px" onmouseover="this.style.background='#e5e7eb'" onmouseout="this.style.background='none'">🥈</span><span style="cursor:pointer;font-size:18px;padding:2px 3px;border-radius:4px" onmouseover="this.style.background='#e5e7eb'" onmouseout="this.style.background='none'">🥉</span><span style="cursor:pointer;font-size:18px;padding:2px 3px;border-radius:4px" onmouseover="this.style.background='#e5e7eb'" onmouseout="this.style.background='none'">🎉</span><span style="cursor:pointer;font-size:18px;padding:2px 3px;border-radius:4px" onmouseover="this.style.background='#e5e7eb'" onmouseout="this.style.background='none'">🔥</span><span style="cursor:pointer;font-size:18px;padding:2px 3px;border-radius:4px" onmouseover="this.style.background='#e5e7eb'" onmouseout="this.style.background='none'">💪</span><span style="cursor:pointer;font-size:18px;padding:2px 3px;border-radius:4px" onmouseover="this.style.background='#e5e7eb'" onmouseout="this.style.background='none'">👏</span><span style="cursor:pointer;font-size:18px;padding:2px 3px;border-radius:4px" onmouseover="this.style.background='#e5e7eb'" onmouseout="this.style.background='none'">😮</span><span style="cursor:pointer;font-size:18px;padding:2px 3px;border-radius:4px" onmouseover="this.style.background='#e5e7eb'" onmouseout="this.style.background='none'">😂</span><span style="cursor:pointer;font-size:18px;padding:2px 3px;border-radius:4px" onmouseover="this.style.background='#e5e7eb'" onmouseout="this.style.background='none'">😭</span><span style="cursor:pointer;font-size:18px;padding:2px 3px;border-radius:4px" onmouseover="this.style.background='#e5e7eb'" onmouseout="this.style.background='none'">😤</span><span style="cursor:pointer;font-size:18px;padding:2px 3px;border-radius:4px" onmouseover="this.style.background='#e5e7eb'" onmouseout="this.style.background='none'">🤞</span><span style="cursor:pointer;font-size:18px;padding:2px 3px;border-radius:4px" onmouseover="this.style.background='#e5e7eb'" onmouseout="this.style.background='none'">🙏</span><span style="cursor:pointer;font-size:18px;padding:2px 3px;border-radius:4px" onmouseover="this.style.background='#e5e7eb'" onmouseout="this.style.background='none'">👀</span><span style="cursor:pointer;font-size:18px;padding:2px 3px;border-radius:4px" onmouseover="this.style.background='#e5e7eb'" onmouseout="this.style.background='none'">💀</span><span style="cursor:pointer;font-size:18px;padding:2px 3px;border-radius:4px" onmouseover="this.style.background='#e5e7eb'" onmouseout="this.style.background='none'">😬</span><span style="cursor:pointer;font-size:18px;padding:2px 3px;border-radius:4px" onmouseover="this.style.background='#e5e7eb'" onmouseout="this.style.background='none'">🫣</span><span style="cursor:pointer;font-size:18px;padding:2px 3px;border-radius:4px" onmouseover="this.style.background='#e5e7eb'" onmouseout="this.style.background='none'">😱</span><span style="cursor:pointer;font-size:18px;padding:2px 3px;border-radius:4px" onmouseover="this.style.background='#e5e7eb'" onmouseout="this.style.background='none'">🎯</span><span style="cursor:pointer;font-size:18px;padding:2px 3px;border-radius:4px" onmouseover="this.style.background='#e5e7eb'" onmouseout="this.style.background='none'">💥</span><span style="cursor:pointer;font-size:18px;padding:2px 3px;border-radius:4px" onmouseover="this.style.background='#e5e7eb'" onmouseout="this.style.background='none'">⬆️</span><span style="cursor:pointer;font-size:18px;padding:2px 3px;border-radius:4px" onmouseover="this.style.background='#e5e7eb'" onmouseout="this.style.background='none'">⬇️</span><span style="cursor:pointer;font-size:18px;padding:2px 3px;border-radius:4px" onmouseover="this.style.background='#e5e7eb'" onmouseout="this.style.background='none'">🟢</span><span style="cursor:pointer;font-size:18px;padding:2px 3px;border-radius:4px" onmouseover="this.style.background='#e5e7eb'" onmouseout="this.style.background='none'">🔴</span>
+    </div>
     <div class="chat-input-row">
+      <button onclick="toggleEmoji()" style="font-size:18px;background:none;border:none;cursor:pointer;padding:4px 6px;border-radius:6px;line-height:1;align-self:flex-end;transition:background .15s" title="Emojis">😊</button>
       <textarea class="chat-input" id="chatInput" placeholder="Skriv ett meddelande..." rows="1" maxlength="300"
         onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChatMsg()}"
         oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,80)+'px'"></textarea>
@@ -701,6 +707,16 @@ function toast(msg) {
   setTimeout(() => el.classList.remove('show'), 2800);
 }
 
+function scrollToChat() {
+  const chat = document.getElementById('chatWrap');
+  if (!chat) return;
+  // If chat is collapsed, open it first
+  if (typeof chatOpen !== 'undefined' && !chatOpen) {
+    window.toggleChat && window.toggleChat();
+  }
+  chat.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
 // ── ESPN LIVE SYNC ─────────────────────────────────────────────────────
 // Maps ESPN display names → our participant player names
 const NAME_MAP = {
@@ -896,17 +912,22 @@ let initialLoad = true; // don't count existing messages as unread on first load
 
 function updateUnreadBadge() {
   const badge = document.getElementById('unreadBadge');
-  if (!badge) return;
-  if (!chatOpen && unreadCount > 0) {
-    badge.style.display = 'block';
-    badge.textContent = unreadCount > 99 ? '99+' : unreadCount;
-    // Re-trigger animation
-    badge.style.animation = 'none';
-    badge.offsetHeight; // reflow
-    badge.style.animation = 'badgePop .2s ease';
-  } else {
-    badge.style.display = 'none';
-  }
+  const btnBadge = document.getElementById('chatBtnBadge');
+  const show = !chatOpen && unreadCount > 0;
+  const label = unreadCount > 99 ? '99+' : String(unreadCount);
+
+  [badge, btnBadge].forEach(el => {
+    if (!el) return;
+    if (show) {
+      el.style.display = 'block';
+      el.textContent = label;
+      el.style.animation = 'none';
+      el.offsetHeight;
+      el.style.animation = 'badgePop .2s ease';
+    } else {
+      el.style.display = 'none';
+    }
+  });
 }
 
 function initChat() {
@@ -967,13 +988,12 @@ window.sendChatMsg = function() {
   const inp = document.getElementById('chatInput');
   const text = inp.value.trim();
   if (!text || !chatName) return;
-  push(msgsRef, {
-    name: chatName,
-    text,
-    ts: serverTimestamp()
-  });
+  push(msgsRef, { name: chatName, text, ts: serverTimestamp() });
   inp.value = '';
   inp.style.height = 'auto';
+  // Close emoji picker after sending
+  const picker = document.getElementById('emojiPicker');
+  if (picker) picker.style.display = 'none';
 };
 
 function appendMsg(msg) {
@@ -996,7 +1016,24 @@ function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-window.toggleChat = function() {
+window.toggleEmoji = function() {
+  const picker = document.getElementById('emojiPicker');
+  picker.style.display = picker.style.display === 'none' ? 'flex' : 'none';
+};
+
+// Clicking an emoji inserts it into the input
+document.getElementById('emojiPicker').addEventListener('click', e => {
+  const span = e.target.closest('span');
+  if (!span) return;
+  const emoji = span.textContent.trim();
+  if (!emoji) return;
+  const inp = document.getElementById('chatInput');
+  const pos = inp.selectionStart ?? inp.value.length;
+  inp.value = inp.value.slice(0, pos) + emoji + inp.value.slice(pos);
+  inp.selectionStart = inp.selectionEnd = pos + emoji.length;
+  inp.focus();
+  inp.dispatchEvent(new Event('input'));
+});
   chatOpen = !chatOpen;
   document.getElementById('chatBody').style.display = chatOpen ? 'flex' : 'none';
   document.getElementById('chatToggleLbl').textContent = chatOpen ? '▲ Dölj' : '▼ Visa';
