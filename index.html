@@ -85,13 +85,14 @@ tbody tr.rank3 td:first-child{border-left:3px solid #cd7f32}
 .card-top{display:grid;grid-template-columns:40px 1fr 64px;align-items:center;padding:10px 12px;gap:8px}
 .card-pos{font-family:'Playfair Display',serif;font-size:20px;font-weight:900;color:#ccc;text-align:center}
 .card-pos.p1{color:var(--gold)}.card-pos.p2{color:#999}.card-pos.p3{color:#b08050}
-.card-name{font-size:15px;font-weight:500}
+.card-name{font-size:15px;font-weight:500;display:flex;align-items:center;flex-wrap:wrap;gap:4px}
 .card-score{text-align:right}
 .card-score-val{font-family:'Playfair Display',serif;font-size:22px;font-weight:900;line-height:1}
 .card-score-lbl{font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);margin-top:1px}
 .card-players{border-top:1px solid #f0ede6;padding:8px 12px;display:flex;flex-direction:column;gap:4px}
 .card-player-row{display:grid;grid-template-columns:1fr auto auto auto auto auto;gap:4px;align-items:center;font-size:11px}
 .card-player-name{font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card-player-name.mc-player{color:#aaa;text-decoration:line-through}
 .card-score-pill{font-family:'DM Mono',monospace;font-size:10px;font-weight:500;padding:2px 6px;border-radius:4px;min-width:28px;text-align:center}
 .card-player-tot{font-family:'DM Mono',monospace;font-size:11px;font-weight:700;padding:2px 6px;border-radius:4px;min-width:34px;text-align:center;border-left:1px solid #e5e1d8}
 .card-p45-row{border-top:1px dashed #f0ede6;padding:5px 12px;display:flex;gap:10px;font-family:'DM Mono',monospace;font-size:10px;color:var(--muted)}
@@ -360,10 +361,8 @@ function isFinished(plName) {
 function playerTotal(pi, pli) {
   const s = scores[pi][pli];
   if (s.every(v => v === null)) return null;
-  if (s.some(v => v === 'MC')) {
-    const nonMC = s.filter(v => v !== null && v !== 'MC' && !isNaN(v));
-    return nonMC.length ? nonMC.reduce((a,b)=>a+b,0) : 'MC';
-  }
+  // If ANY round slot is 'MC', the player missed the cut — return MC
+  if (s.some(v => v === 'MC')) return 'MC';
   const vals = s.filter(v => v !== null && !isNaN(v));
   return vals.length ? vals.reduce((a,b)=>a+b,0) : null;
 }
@@ -558,15 +557,17 @@ function renderCards() {
       const tot = playerTotal(pi, pli);
       const isCnt = cnt.includes(pl);
       const fin = isFinished(pl);
+      const isMC = tot === 'MC';
       const rounds = [0,1,2,3].map(r => {
         const s = getScore(pi, pli, r);
         if (currentRoundFilter > 0 && currentRoundFilter !== r+1) return '';
+        // For MC players, show R3/R4 as MC pill, keep R1/R2 scores
         return `<span class="card-score-pill ${scoreClass(s)}">${s!==null?fmtScore(s):'–'}</span>`;
       }).join('');
-      const totCell = `<span class="card-player-tot ${scoreClass(tot)}">${fmtScore(tot)}</span>`;
+      const totCell = `<span class="card-player-tot ${isMC?'mc':scoreClass(tot)}">${isMC?'MC':fmtScore(tot)}</span>`;
       return `<div class="card-player-row">
         ${isCnt?'<span class="counting-dot"></span>':'<span style="width:7px;flex-shrink:0"></span>'}
-        <span class="card-player-name${fin?' done':''}">${pl.replace(' (a)','')}${fin?'<span class="fin-badge">✓ F</span>':''}</span>
+        <span class="card-player-name${fin?' done':''}${isMC?' mc-player':''}">${pl.replace(' (a)','')}${fin&&!isMC?'<span class="fin-badge">✓ F</span>':''}</span>
         ${currentRoundFilter===0 ? rounds+totCell : rounds}
       </div>`;
     }).join('');
@@ -883,12 +884,16 @@ function applyLiveToScores(maxRound) {
       for (let r = 1; r <= 4; r++) {
         const key = `${pi}_${pli}_${r-1}`;
         if (manualOverrides[key]) continue;
-        if (ld.mc && r >= 3) {
-          scores[pi][pli][r-1] = 'MC';
+        if (ld.mc) {
+          // MC players: keep R1/R2 scores, mark R3/R4 as MC
+          if (r >= 3) {
+            scores[pi][pli][r-1] = 'MC';
+          } else if (ld.rounds[r] !== undefined) {
+            scores[pi][pli][r-1] = ld.rounds[r];
+          }
         } else if (ld.rounds[r] !== undefined) {
           scores[pi][pli][r-1] = ld.rounds[r];
         } else if (r === maxRound && ld.total !== null && Object.keys(ld.rounds).length === 0) {
-          // Only fall back to total if we have NO round data at all (first holes of R1)
           scores[pi][pli][r-1] = ld.total;
         }
       }
