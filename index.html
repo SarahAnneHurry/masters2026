@@ -748,7 +748,18 @@ function scrollToChat() {
   chat.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-// ── ESPN LIVE SYNC ─────────────────────────────────────────────────────
+// ── HARDCODED MC LIST (confirmed after R2 cut) ─────────────────────────
+// Cut line was +4. Verified from R2 leaderboard and R3 tee times.
+const MC_PLAYERS = new Set([
+  "Bryson DeChambeau",   // +6
+  "Robert MacIntyre",    // +7
+  "J.J. Spaun",         // +5
+  "Akshay Bhatia",      // +6
+  "Cameron Smith",       // +7
+  "Nicolai Hojgaard",   // +6 (twin Rasmus made cut, Nicolai didn't)
+  "Min Woo Lee",        // +11
+  "Michael Kim",        // +8
+]);
 // Maps ESPN display names → our participant player names
 const NAME_MAP = {
   "Ludvig Åberg":"Ludvig Aberg","Ludvig Aberg":"Ludvig Aberg",
@@ -872,6 +883,15 @@ function applyLiveToScores(maxRound) {
   PARTICIPANTS.forEach((p, pi) => {
     p.players.forEach((plName, pli) => {
       if (!plName || !plName.trim()) return;
+
+      // Apply hardcoded MC — works even if ESPN data is missing or wrong
+      const isMCPlayer = MC_PLAYERS.has(plName);
+      if (isMCPlayer) {
+        if (!manualOverrides[`${pi}_${pli}_2`]) scores[pi][pli][2] = 'MC';
+        if (!manualOverrides[`${pi}_${pli}_3`]) scores[pi][pli][3] = 'MC';
+      }
+
+      // Get live data for R1/R2 scores
       let ld = liveData[plName];
       if (!ld) {
         const last = plName.split(' ').pop().toLowerCase();
@@ -884,14 +904,8 @@ function applyLiveToScores(maxRound) {
       for (let r = 1; r <= 4; r++) {
         const key = `${pi}_${pli}_${r-1}`;
         if (manualOverrides[key]) continue;
-        if (ld.mc) {
-          // MC players: keep R1/R2 scores, mark R3/R4 as MC
-          if (r >= 3) {
-            scores[pi][pli][r-1] = 'MC';
-          } else if (ld.rounds[r] !== undefined) {
-            scores[pi][pli][r-1] = ld.rounds[r];
-          }
-        } else if (ld.rounds[r] !== undefined) {
+        if (isMCPlayer && r >= 3) continue; // already set above
+        if (ld.rounds[r] !== undefined) {
           scores[pi][pli][r-1] = ld.rounds[r];
         } else if (r === maxRound && ld.total !== null && Object.keys(ld.rounds).length === 0) {
           scores[pi][pli][r-1] = ld.total;
@@ -920,6 +934,16 @@ if (savedOverrides) { try { Object.assign(manualOverrides, JSON.parse(savedOverr
 render();
 renderCards();
 applyRoundFilter();
+// Apply hardcoded MC immediately on load — no sync needed
+PARTICIPANTS.forEach((p, pi) => {
+  p.players.forEach((plName, pli) => {
+    if (MC_PLAYERS.has(plName)) {
+      if (!manualOverrides[`${pi}_${pli}_2`]) scores[pi][pli][2] = 'MC';
+      if (!manualOverrides[`${pi}_${pli}_3`]) scores[pi][pli][3] = 'MC';
+    }
+  });
+});
+render(); renderCards();
 // Auto-fetch on load if during tournament hours
 const _now = new Date(), _h = _now.getUTCHours() + 2, _day = _now.getUTCDay();
 if ([4,5,6,0].includes(_day) && _h >= 13 && _h <= 23) fetchLive();
