@@ -112,7 +112,14 @@ tbody tr.rank3 td:first-child{border-left:3px solid #cd7f32}
 /* finished round indicator */
 .fin-badge{display:inline-block;font-size:8px;font-family:'DM Mono',monospace;font-weight:600;color:#166534;background:#dcfce7;border:1px solid #86efac;border-radius:3px;padding:1px 4px;margin-left:5px;vertical-align:middle;letter-spacing:.03em}
 td.player-name.done{background:#f0fdf4!important}
-.card-player-name.done{color:#166534}
+.card-player-name.done{color:#166634}
+
+/* eliminated participant */
+.elim-badge{display:inline-block;font-size:8px;font-family:'DM Mono',monospace;font-weight:600;color:#9f1239;background:#fce7f3;border:1px solid #fbcfe8;border-radius:3px;padding:1px 5px;margin-left:6px;vertical-align:middle;letter-spacing:.03em}
+tbody tr.eliminated{opacity:.55}
+tbody tr.eliminated td.name-cell{color:var(--muted)}
+.lb-card.eliminated{opacity:.55}
+.lb-card.eliminated .card-name{color:var(--muted)}
 
 /* ═══════════════════════════════
    CHAT
@@ -370,6 +377,23 @@ function participantScore(pi) {
   return totals.slice(0,3).reduce((a,b)=>a+b,0);
 }
 
+// Count non-MC, non-null players — if < 3 the participant can't fill a Top 3
+function activePlayers(pi) {
+  return PARTICIPANTS[pi].players.filter((pl,pli) => {
+    if (!pl) return false;
+    const tot = playerTotal(pi, pli);
+    return tot !== null && tot !== 'MC';
+  }).length;
+}
+
+function isEliminated(pi) {
+  // Only flag as eliminated if we actually have MC data (scores have been synced)
+  const hasSomeData = PARTICIPANTS[pi].players.some((_,pli) =>
+    PARTICIPANTS[pi].players[pli] && playerTotal(pi,pli) !== null
+  );
+  return hasSomeData && activePlayers(pi) < 3;
+}
+
 function participantP45(pi) {
   const totals = PARTICIPANTS[pi].players
     .map((_,pli) => PARTICIPANTS[pi].players[pli] ? playerTotal(pi,pli) : null)
@@ -399,16 +423,16 @@ function scoreClass(s) {
 function render() {
   // Sort by Top3, then P4 tiebreaker, then P5 tiebreaker
   const order = PARTICIPANTS.map((_,i)=>i).sort((a,b)=>{
+    const ea=isEliminated(a), eb=isEliminated(b);
+    if(ea&&!eb) return 1; if(!ea&&eb) return -1;
     const sa=participantScore(a), sb=participantScore(b);
     if(sa===null&&sb===null) return 0;
     if(sa===null) return 1; if(sb===null) return -1;
     if(sa!==sb) return sa-sb;
-    // Tied on Top3 — use P4
     const [a4,a5]=participantP45(a), [b4,b5]=participantP45(b);
     if(a4!==null&&b4!==null&&a4!==b4) return a4-b4;
     if(a4!==null&&b4===null) return -1;
     if(a4===null&&b4!==null) return 1;
-    // Still tied — use P5
     if(a5!==null&&b5!==null&&a5!==b5) return a5-b5;
     return 0;
   });
@@ -424,7 +448,8 @@ function render() {
     const posClass = rank===0?'p1':rank===1?'p2':rank===2?'p3':'';
 
     const tr = document.createElement('tr');
-    tr.className = rowClass;
+    const elim = isEliminated(pi);
+    tr.className = [rowClass, elim ? 'eliminated' : ''].filter(Boolean).join(' ');
 
     // Pos
     const tdPos = document.createElement('td');
@@ -435,7 +460,9 @@ function render() {
     // Name
     const tdName = document.createElement('td');
     tdName.className = 'name-cell';
-    tdName.textContent = p.name;
+    tdName.innerHTML = p.name + (elim
+      ? `<span class="elim-badge">⚠ Ute</span>`
+      : '');
     tr.appendChild(tdName);
 
     // Top3
@@ -502,6 +529,8 @@ function renderCards() {
   const wrap = document.getElementById('cardsWrap');
   if (!wrap) return;
   const order = PARTICIPANTS.map((_,i)=>i).sort((a,b)=>{
+    const ea=isEliminated(a), eb=isEliminated(b);
+    if(ea&&!eb) return 1; if(!ea&&eb) return -1;
     const sa=participantScore(a), sb=participantScore(b);
     if(sa===null&&sb===null) return 0;
     if(sa===null) return 1; if(sb===null) return -1;
@@ -519,6 +548,7 @@ function renderCards() {
     const score = participantScore(pi);
     const [p4,p5] = participantP45(pi);
     const cnt = counting(pi);
+    const elim = isEliminated(pi);
     const rankClass = rank===0?'rank1':rank===1?'rank2':rank===2?'rank3':'';
     const posClass  = rank===0?'p1':rank===1?'p2':rank===2?'p3':'';
     const scoreClass2 = score===null?'empty':scoreClass(score);
@@ -548,10 +578,10 @@ function renderCards() {
         ${p5!==null?`<span>P5 <span class="card-p45-val ${scoreClass(p5)}" style="padding:1px 5px;border-radius:3px">${fmtScore(p5)}</span></span>`:''}
       </div>` : '';
 
-    return `<div class="lb-card ${rankClass}">
+    return `<div class="lb-card ${rankClass}${elim?' eliminated':''}">
       <div class="card-top">
         <div class="card-pos ${posClass}">${rank+1}</div>
-        <div class="card-name">${p.name}</div>
+        <div class="card-name">${p.name}${elim?'<span class="elim-badge">⚠ Ute</span>':''}</div>
         <div class="card-score">
           <div class="card-score-val ${scoreClass2}">${score===null?'–':fmtScore(score)}</div>
           <div class="card-score-lbl">BÄSTA 3</div>
