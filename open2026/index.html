@@ -113,6 +113,31 @@ body{font-family:'Public Sans',sans-serif;background:var(--sand);color:var(--ink
 .adm-pot{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:12.5px}
 .adm-pot input{width:110px;padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-family:'IBM Plex Mono',monospace}
 
+/* ══ LAGBYGGARE (?pick=1) ══ */
+.pick-name{width:100%;font-family:'Public Sans',sans-serif;font-size:14px;font-weight:600;padding:10px 12px;border:1px solid var(--border);border-radius:7px;background:#fdfcf8;margin-bottom:12px}
+.pick-bar{height:12px;background:#eee9dc;border-radius:6px;overflow:hidden;margin:2px 0 5px}
+.pick-bar i{display:block;height:100%;background:var(--navy);border-radius:6px;transition:width .2s}
+.pick-bar i.warn{background:var(--claret)}
+.pick-nums{display:flex;justify-content:space-between;font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--muted)}
+.pick-sel{margin:10px 0 8px}
+.pick-sel-row{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px dashed var(--border);font-size:13px}
+.pick-sel-row b{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500}
+.pick-sel-row .tier{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.1em;color:var(--gold-deep)}
+.pick-sel-row .kr{font-family:'IBM Plex Mono',monospace;font-size:11.5px;min-width:48px;text-align:right}
+.pick-sel-row button{border:none;background:var(--claret-light);color:var(--claret);border-radius:5px;width:26px;height:26px;cursor:pointer;font-size:12px;flex-shrink:0}
+.pick-search{width:100%;font-size:13px;padding:9px 12px;border:1px solid var(--border);border-radius:7px;background:#fdfcf8;margin:2px 0 4px}
+.pick-tier-h{font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.18em;color:var(--muted);margin:14px 0 5px}
+.pick-pl{display:flex;align-items:center;gap:8px;width:100%;text-align:left;padding:9px 11px;border:1px solid var(--border);background:#fff;border-radius:7px;margin-bottom:5px;cursor:pointer;font-family:'Public Sans',sans-serif;font-size:13px;color:var(--ink)}
+.pick-pl:disabled{opacity:.4;cursor:not-allowed}
+.pick-pl.on{border-color:var(--navy);background:var(--navy);color:#fff}
+.pick-pl.on .kr{color:var(--gold)}
+.pick-pl b{flex:1;font-weight:500;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pick-pl .kr{font-family:'IBM Plex Mono',monospace;font-size:11.5px}
+.pick-go{width:100%;margin-top:10px;font-family:'IBM Plex Mono',monospace;font-size:12.5px;letter-spacing:.06em;padding:13px;border:none;border-radius:8px;background:var(--gold);color:var(--navy-deep);font-weight:600;cursor:pointer}
+.pick-go:disabled{background:#d8d2c2;color:#8b8574;cursor:not-allowed}
+.pick-code{width:100%;font-family:'IBM Plex Mono',monospace;font-size:10.5px;line-height:1.5;padding:9px 10px;border:1px solid var(--border);border-radius:7px;background:#fdfcf8;margin-top:10px;min-height:110px}
+.adm-import textarea{width:100%;font-family:'IBM Plex Mono',monospace;font-size:10.5px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;background:#fdfcf8;min-height:64px;margin-bottom:7px}
+
 /* ══ RULES + FOOTER ══ */
 .rules{background:var(--card);border:1px solid var(--border);border-radius:11px;padding:16px 18px;margin-top:22px}
 .rules h2{font-family:'Fraunces',serif;font-weight:800;font-size:16px;margin-bottom:9px;color:var(--navy)}
@@ -194,12 +219,14 @@ const DEMO_TEAMS = [
 const D = window.POOL_DATA || null;
 let PARTICIPANTS = D ? (D.participants || []) : DEMO_TEAMS;
 let PRICE        = (D && D.prices) || {};
+let TIERS        = (D && D.tiers) || {};  // valfritt: {spelare:"ELITE"|"CONTENDER"|...} från prislistan
 let POT_TOTAL    = (D && 'potTotal' in D) ? D.potTotal : null;
 let OVERRIDES    = (D && D.overrides) || {};  // manuella scorekorrigeringar {spelare:{rond:tal}}
 
 // Adminläge: ?admin=1 → redigeringspanel + lokala ändringar tills de publiceras
 const PARAMS = new URLSearchParams(location.search);
 const ADMIN = PARAMS.get('admin') === '1';
+const PICK  = PARAMS.get('pick') === '1' && !ADMIN;  // lagbyggare för deltagarna
 const ADMIN_KEY = 'open26admin';
 if (ADMIN){
   const a = JSON.parse(localStorage.getItem(ADMIN_KEY) || 'null');
@@ -404,6 +431,7 @@ function renderOwnership(){
 
 /* ── Rendering ────────────────────────────────────────────────── */
 function render(){
+  if (PICK){ renderPick(); return; }
   // pott
   if (POT_TOTAL){
     const f = n => Math.round(n).toLocaleString('sv-SE') + ' kr';
@@ -497,13 +525,16 @@ window.toggleRow = i => {
 
 /* ── Auto-uppdatering: var 3:e min under speltid (tors–sön ~07–22 CEST) ── */
 setInterval(() => {
-  if (S.final) return; // slutresultat låst — inga fler hämtningar
+  if (S.final || PICK) return; // slutresultat låst / lagbyggare — inga fler hämtningar
   const d = new Date();
   if ([4, 5, 6, 0].includes(d.getDay()) && d.getHours() >= 7 && d.getHours() <= 22) fetchLive(false);
 }, 180000);
 
 /* ── ADMINPANEL (?admin=1) ────────────────────────────────────── */
-const TIER = p => p >= 160 ? 'ELITE' : p >= 100 ? 'CONTENDER' : null;
+// 2026 års band: ELITE 170–200, CONTENDER 110–160. Banden kan överlappa i pris,
+// så prislistans explicita tiers (data.js → tiers) vinner alltid över tröskeln.
+const TIER = p => p >= 170 ? 'ELITE' : p >= 110 ? 'CONTENDER' : null;
+const tierOf = n => TIERS[n] || TIER(PRICE[n] || 0);
 let editIdx = -1;
 
 function teamIssues(t){
@@ -513,7 +544,7 @@ function teamIssues(t){
   if (Object.keys(PRICE).length){
     const cost = pls.reduce((a, n) => a + (PRICE[n] || 0), 0);
     if (cost > 400) issues.push(`${cost} kr (max 400)`);
-    const tiers = pls.map(n => TIER(PRICE[n] || 0));
+    const tiers = pls.map(tierOf);
     if (tiers.filter(x => x === 'ELITE').length > 1) issues.push('>1 ELITE');
     if (tiers.filter(x => x === 'CONTENDER').length > 1) issues.push('>1 CONTENDER');
     pls.filter(n => !(n in PRICE)).forEach(n => issues.push(`"${n}" saknas i prislistan`));
@@ -572,6 +603,10 @@ function renderAdmin(){
   }).join('') || '<div class="cutnote">Inga lag ännu — lägg till nedan.</div>';
 
   el.innerHTML = `<h3>ADMIN · LAG &amp; POTT</h3>${teamRows}
+  <div class="adm-import" style="margin-top:12px">
+    <textarea id="admCode" placeholder="Klistra in lagkod(er) från chatten — hela meddelandet funkar, flera koder på en gång funkar. Samma namn ersätter tidigare lag."></textarea>
+    <div class="adm-btns"><button class="primary" onclick="admImport()">📥 Importera lagkod</button></div>
+  </div>
   <div class="adm-form">
     <input id="admName" placeholder="Deltagarens namn" value="">
     ${[0,1,2,3,4].map(i => `<input class="admP" list="fieldNames" placeholder="Spelare ${i+1}${i>2?' (valfri)':''}">`).join('')}
@@ -634,6 +669,160 @@ window.admExport = (download) => {
   }
 };
 
+/* ── LAGKODER (delas mellan ?pick=1 och ?admin=1) ─────────────── */
+// Format: OPEN26.<base64(JSON {n:namn, p:[spelare]})> — tål att hela
+// chattmeddelandet klistras in; flera koder i samma text funkar också.
+const cleanStr = s => String(s).replace(/[<>&"]/g, '').trim();
+function encodeTeam(name, players){
+  return 'OPEN26.' + btoa(unescape(encodeURIComponent(JSON.stringify({n: name, p: players}))));
+}
+function decodeTeams(text){
+  const out = [];
+  for (const m of String(text).matchAll(/OPEN26\.([A-Za-z0-9+/=]+)/g)){
+    try {
+      const o = JSON.parse(decodeURIComponent(escape(atob(m[1]))));
+      const name = cleanStr(o.n || '').slice(0, 40);
+      const players = (Array.isArray(o.p) ? o.p : []).map(x => cleanStr(x).slice(0, 60)).filter(Boolean).slice(0, 8);
+      if (name && players.length) out.push({name, players});
+    } catch {}
+  }
+  return out;
+}
+
+window.admImport = () => {
+  const ta = document.getElementById('admCode');
+  const teams = decodeTeams(ta.value);
+  if (!teams.length) return toast('Ingen giltig lagkod (OPEN26.…) hittades i texten');
+  let added = 0, replaced = 0; const warned = [];
+  teams.forEach(t => {
+    const idx = PARTICIPANTS.findIndex(p => p.name.trim().toLowerCase() === t.name.toLowerCase());
+    const team = {name: t.name, players: t.players};
+    if (idx >= 0){ PARTICIPANTS[idx] = team; replaced++; } else { PARTICIPANTS.push(team); added++; }
+    const iss = teamIssues(team);
+    if (iss.length) warned.push(`${t.name}: ${iss[0]}`);
+  });
+  ta.value = ''; editIdx = -1; saveAdmin(); render();
+  toast(`Import: ${added} nya · ${replaced} ersatta` + (warned.length ? ` · ⚠ ${warned.join(' · ')}` : ' — allt OK ✓'));
+};
+
+/* ── LAGBYGGARE (?pick=1) ─────────────────────────────────────── */
+const PICK_KEY = 'open26pick';
+let pickState = Object.assign({name:'', sel:[]}, JSON.parse(localStorage.getItem(PICK_KEY) || 'null') || {});
+const savePick = () => localStorage.setItem(PICK_KEY, JSON.stringify(pickState));
+let pickQuery = '';
+const escA = s => String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+
+function pickStats(){
+  const cost = pickState.sel.reduce((a, n) => a + (PRICE[n] || 0), 0);
+  const tiers = pickState.sel.map(tierOf);
+  return { cost,
+    nElite: tiers.filter(t => t === 'ELITE').length,
+    nCont:  tiers.filter(t => t === 'CONTENDER').length };
+}
+
+window.pickToggle = name => {
+  const i = pickState.sel.indexOf(name);
+  if (i >= 0) pickState.sel.splice(i, 1);
+  else {
+    const {cost, nElite, nCont} = pickStats();
+    if (pickState.sel.length >= 5)             return toast('Laget är fullt — max 5 spelare');
+    if (cost + (PRICE[name] || 0) > 400)       return toast('Ryms inte i budgeten (max 400 kr)');
+    if (tierOf(name) === 'ELITE' && nElite)    return toast('Max 1 ELITE per lag');
+    if (tierOf(name) === 'CONTENDER' && nCont) return toast('Max 1 CONTENDER per lag');
+    pickState.sel.push(name);
+  }
+  savePick(); renderPick();
+};
+
+window.pickSearch = q => {
+  pickQuery = q.trim().toLowerCase();
+  const el = document.getElementById('pickList');
+  if (el) el.innerHTML = pickListHtml();
+};
+
+window.pickCopy = () => {
+  const name = pickState.name.trim();
+  if (!name){ toast('Skriv ditt namn först'); const i = document.getElementById('pickName'); if (i) i.focus(); return; }
+  const {cost} = pickStats();
+  const msg = `⛳ The Open Vinnarpotten — mitt lag\n${name} · ${cost} kr\n` +
+    pickState.sel.map(n => `• ${n} (${PRICE[n]} kr)`).join('\n') +
+    `\nKOD: ${encodeTeam(name, pickState.sel)}`;
+  const ta = document.getElementById('pickCode');
+  ta.value = msg; ta.style.display = 'block';
+  navigator.clipboard.writeText(msg)
+    .then(() => toast('Kopierat! Klistra in i gruppchatten 📋'))
+    .catch(() => { ta.focus(); ta.select(); toast('Markera texten nedan och kopiera manuellt'); });
+};
+
+function pickListHtml(){
+  const {cost, nElite, nCont} = pickStats();
+  const order = ['ELITE','CONTENDER','VALUE','LONGSHOT','WILDCARD'];
+  const groups = {};
+  Object.keys(PRICE).forEach(n => {
+    if (pickQuery && !n.toLowerCase().includes(pickQuery)) return;
+    const t = tierOf(n) || 'ÖVRIGA';
+    (groups[t] = groups[t] || []).push(n);
+  });
+  const keys = [...order.filter(t => groups[t]), ...Object.keys(groups).filter(t => !order.includes(t)).sort()];
+  if (!keys.length) return '<div class="cutnote">Ingen spelare matchar sökningen.</div>';
+  return keys.map(t => `<div class="pick-tier-h">${t}</div>` +
+    groups[t].sort((a, b) => PRICE[b] - PRICE[a] || a.localeCompare(b)).map(n => {
+      const on = pickState.sel.includes(n);
+      let dis = '';
+      if (!on){
+        if (pickState.sel.length >= 5)              dis = 'Laget är fullt (max 5)';
+        else if (cost + PRICE[n] > 400)             dis = 'Ryms inte i budgeten';
+        else if (tierOf(n) === 'ELITE' && nElite)   dis = 'Max 1 ELITE';
+        else if (tierOf(n) === 'CONTENDER' && nCont) dis = 'Max 1 CONTENDER';
+      }
+      return `<button class="pick-pl${on ? ' on' : ''}"${dis ? ` disabled title="${dis}"` : ''} data-pick="${escA(n)}">
+        <b>${n}</b><span class="kr">${PRICE[n]} kr</span></button>`;
+    }).join('')).join('');
+}
+
+function renderPick(){
+  const board = document.getElementById('board');
+  if (!Object.keys(PRICE).length){
+    board.innerHTML = `<div class="side" style="text-align:center;padding:26px 16px">
+      <div style="font-family:'Fraunces',serif;font-weight:800;font-size:18px;color:var(--navy)">Lagbyggaren öppnar när priserna publiceras</div>
+      <div style="font-size:12.5px;color:var(--muted);margin-top:6px">Prislistan kommer <b>14 juli</b> · anmälan stänger <b>15 juli kl 20:00</b></div></div>`;
+    return;
+  }
+  pickState.sel = pickState.sel.filter(n => n in PRICE); // prislistan kan ha uppdaterats
+  const {cost, nElite, nCont} = pickStats();
+  const nSel = pickState.sel.length;
+  const ok = nSel >= 3 && nSel <= 5 && cost <= 400 && nElite <= 1 && nCont <= 1;
+  const selRows = pickState.sel.map(n => `<div class="pick-sel-row">
+      <b>${n}</b><span class="tier">${tierOf(n) || ''}</span><span class="kr">${PRICE[n]} kr</span>
+      <button data-pick="${escA(n)}" aria-label="Ta bort ${escA(n)}">✕</button>
+    </div>`).join('') || '<div class="cutnote">Inga spelare valda ännu — tryck på spelare i prislistan nedan.</div>';
+
+  board.innerHTML = `
+  <section class="side">
+    <h3>BYGG DITT LAG · MAX 400 KR · 3–5 SPELARE</h3>
+    <input class="pick-name" id="pickName" placeholder="Ditt namn" maxlength="40" value="${escA(pickState.name)}"
+           oninput="pickState.name=this.value;savePick()">
+    <div class="pick-bar"><i class="${cost > 400 ? 'warn' : ''}" style="width:${Math.min(100, cost / 4)}%"></i></div>
+    <div class="pick-nums"><span>${cost} kr använt</span><span>${400 - cost} kr kvar</span></div>
+    <div class="pick-sel">${selRows}</div>
+    <div class="pick-nums"><span>${nSel} spelare (3–5)</span><span>${nElite}/1 ELITE · ${nCont}/1 CONTENDER</span></div>
+    <button class="pick-go" ${ok ? '' : 'disabled'} onclick="pickCopy()">📋 KOPIERA LAGKOD TILL CHATTEN</button>
+    <textarea class="pick-code" id="pickCode" readonly style="display:none"></textarea>
+    <div class="cutnote" style="margin-top:8px">Skicka meddelandet i gruppchatten senast <b>ons 15 juli kl 20:00</b>.
+    Ångrat dig? Bygg om och skicka en ny kod — den senaste gäller.</div>
+  </section>
+  <section class="side">
+    <h3>PRISLISTA · TRYCK FÖR ATT VÄLJA</h3>
+    <input class="pick-search" placeholder="Sök spelare…" value="${escA(pickQuery)}" oninput="pickSearch(this.value)">
+    <div id="pickList">${pickListHtml()}</div>
+  </section>`;
+}
+
+if (PICK) document.getElementById('board').addEventListener('click', e => {
+  const b = e.target.closest('[data-pick]');
+  if (b && !b.disabled) pickToggle(b.dataset.pick);
+});
+
 /* ── Spara som bild (för att dela i gruppchatten) ─────────────── */
 window.savePNG = () => {
   const go = () => {
@@ -655,12 +844,16 @@ window.savePNG = () => {
 };
 
 /* ── Start ────────────────────────────────────────────────────── */
-if (S.lastSync){
+if (PICK){
+  document.querySelector('.strip').style.display = 'none';
+  const pb = document.getElementById('pngBtn'); if (pb) pb.parentElement.style.display = 'none';
+}
+if (S.lastSync && !PICK){
   const t = new Date(S.lastSync).toLocaleTimeString('sv-SE', {hour:'2-digit', minute:'2-digit'});
   setStatus(`<span><b>${S.roundInfo || 'Sparad data'}</b> · uppdaterad ${t}</span>`);
 }
 render();
-fetchLive(false);
+if (!PICK) fetchLive(false);
 </script>
 </body>
 </html>
