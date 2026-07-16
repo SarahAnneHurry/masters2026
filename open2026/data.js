@@ -1,12 +1,167 @@
-/* data.js — The Open 2026, Royal Birkdale
-   Price list set 13 Jul 2026. Field COMPLETE: 156 players incl. Joe Dean
-   (Last-Chance Qualifier winner, added 13 Jul as WILDCARD 20 kr).
-   NOT in the field: Jackson Koivun (turned pro), Elvis Smylie (injury). */
-
 window.POOL_DATA = {
-  "participants": [],
-  "potTotal": 0,
-  "overrides": {},
+  "participants": [
+    {
+      "name": "Joon Petersson",
+      "players": [
+        "Jake Knapp",
+        "Jayden Schaper",
+        "Cameron Young",
+        "Si Woo Kim",
+        "Tiger Christensen"
+      ]
+    },
+    {
+      "name": "Lucas Andersson",
+      "players": [
+        "J.T. Poston",
+        "Matthew Jordan",
+        "Ben Griffin",
+        "Tommy Fleetwood"
+      ]
+    },
+    {
+      "name": "Rasmus Rydberg",
+      "players": [
+        "Matt Fitzpatrick",
+        "J.T. Poston",
+        "Matthew Baldwin",
+        "Tom Kim",
+        "Joe Dean"
+      ]
+    },
+    {
+      "name": "Linus Rydberg",
+      "players": [
+        "Brian Harman",
+        "Patrick Reed",
+        "Michael Thorbjornsen",
+        "Kristoffer Reitan",
+        "Eugenio Chacarra"
+      ]
+    },
+    {
+      "name": "Cameron Mueller",
+      "players": [
+        "Rory McIlroy",
+        "Keita Nakajima",
+        "Min Woo Lee"
+      ]
+    },
+    {
+      "name": "Carl Söderblom",
+      "players": [
+        "Matt Fitzpatrick",
+        "Jordan Smith",
+        "Aaron Rai"
+      ]
+    },
+    {
+      "name": "Jacob Wahlström",
+      "players": [
+        "Tommy Fleetwood",
+        "Shane Lowry",
+        "Michael Thorbjornsen"
+      ]
+    },
+    {
+      "name": "Linn Söderblom",
+      "players": [
+        "Rory McIlroy",
+        "Matthew Southgate",
+        "Justin Rose",
+        "J.T. Poston",
+        ""
+      ]
+    },
+    {
+      "name": "Sarah Massengale",
+      "players": [
+        "Akshay Bhatia",
+        "Ryan Gerard",
+        "Xander Schauffele",
+        "Matthew Baldwin"
+      ]
+    },
+    {
+      "name": "Max Fjellström",
+      "players": [
+        "Chris Gotterup",
+        "Keita Nakajima",
+        "Matt Fitzpatrick",
+        "",
+        ""
+      ]
+    },
+    {
+      "name": "Alexander Hjalmarsson",
+      "players": [
+        "Rory McIlroy",
+        "Robert MacIntyre",
+        "Henrik Stenson"
+      ]
+    },
+    {
+      "name": "Jens Pettersson",
+      "players": [
+        "Tommy Fleetwood",
+        "Tyrrell Hatton",
+        "Naoyuki Kataoka",
+        "",
+        ""
+      ]
+    },
+    {
+      "name": "Roger Massengale",
+      "players": [
+        "Scottie Scheffler",
+        "Robert MacIntyre",
+        "Matthew Baldwin"
+      ]
+    },
+    {
+      "name": "Mårten Waern",
+      "players": [
+        "Tommy Fleetwood",
+        "Thomas Detry",
+        "Ryan Fox",
+        "Darren Clarke",
+        ""
+      ]
+    },
+    {
+      "name": "Martin Berglund",
+      "players": [
+        "Matt Fitzpatrick",
+        "Harris English",
+        "Brian Harman"
+      ]
+    },
+    {
+      "name": "Patrick Wiberg",
+      "players": [
+        "Viktor Hovland",
+        "Rory McIlroy",
+        "Cameron John"
+      ]
+    },
+    {
+      "name": "Johanna Ek",
+      "players": [
+        "Tommy Fleetwood",
+        "Justin Rose",
+        "Jake Knapp"
+      ]
+    },
+    {
+      "name": "Patrik Sjöman",
+      "players": [
+        "Matt Fitzpatrick",
+        "Si Woo Kim",
+        "J.J. Spaun",
+        "J.T. Poston"
+      ]
+    }
+  ],
   "prices": {
     "Scottie Scheffler": 200,
     "Rory McIlroy": 195,
@@ -164,163 +319,7 @@ window.POOL_DATA = {
     "Mason Howell": 20,
     "Mateo Pulcini": 20,
     "Nevill Ruiter": 20
-},
-  "tiers": {
-    "Scottie Scheffler": "ELITE",
-    "Rory McIlroy": "ELITE",
-    "Jon Rahm": "ELITE",
-    "Matt Fitzpatrick": "ELITE",
-    "Tommy Fleetwood": "ELITE",
-    "Bryson DeChambeau": "ELITE",
-    "Ludvig Aberg": "ELITE",
-    "Xander Schauffele": "ELITE",
-    "Robert MacIntyre": "CONTENDER",
-    "Tyrrell Hatton": "CONTENDER",
-    "Collin Morikawa": "CONTENDER",
-    "Viktor Hovland": "CONTENDER",
-    "Chris Gotterup": "CONTENDER",
-    "Justin Rose": "CONTENDER",
-    "Wyndham Clark": "CONTENDER",
-    "Joaquin Niemann": "CONTENDER",
-    "Justin Thomas": "CONTENDER",
-    "Shane Lowry": "CONTENDER",
-    "Brooks Koepka": "CONTENDER",
-    "Jordan Spieth": "CONTENDER",
-    "Aaron Rai": "CONTENDER",
-    "Hideki Matsuyama": "CONTENDER",
-    "Russell Henley": "CONTENDER",
-    "Sepp Straka": "CONTENDER",
-    "Ben Griffin": "CONTENDER",
-    "Corey Conners": "CONTENDER",
-    "Harris English": "CONTENDER",
-    "Cameron Young": "CONTENDER",
-    "Min Woo Lee": "CONTENDER",
-    "Patrick Cantlay": "CONTENDER",
-    "Sam Burns": "CONTENDER",
-    "Sungjae Im": "CONTENDER",
-    "Tom Kim": "CONTENDER",
-    "Alex Noren": "CONTENDER",
-    "Cameron Smith": "CONTENDER",
-    "Keegan Bradley": "CONTENDER",
-    "Marco Penge": "CONTENDER",
-    "Akshay Bhatia": "CONTENDER",
-    "Maverick McNealy": "CONTENDER",
-    "Rasmus Hojgaard": "CONTENDER",
-    "Thomas Detry": "CONTENDER",
-    "Alex Fitzpatrick": "VALUE",
-    "Andrew Novak": "VALUE",
-    "Nicolai Hojgaard": "VALUE",
-    "J.J. Spaun": "VALUE",
-    "Jason Day": "VALUE",
-    "Matt Wallace": "VALUE",
-    "Si Woo Kim": "VALUE",
-    "Adam Scott": "VALUE",
-    "Brian Harman": "VALUE",
-    "Daniel Berger": "VALUE",
-    "Harry Hall": "VALUE",
-    "Jacob Bridgeman": "VALUE",
-    "Kurt Kitayama": "VALUE",
-    "Sami Valimaki": "VALUE",
-    "Billy Horschel": "VALUE",
-    "Jordan Smith": "VALUE",
-    "Keith Mitchell": "VALUE",
-    "Laurie Canter": "VALUE",
-    "Max Homa": "VALUE",
-    "Michael Kim": "VALUE",
-    "Nick Taylor": "VALUE",
-    "Patrick Reed": "VALUE",
-    "Rickie Fowler": "VALUE",
-    "Ryan Fox": "VALUE",
-    "Sahith Theegala": "VALUE",
-    "Tom McKibbin": "VALUE",
-    "David Puig": "VALUE",
-    "Haotong Li": "VALUE",
-    "Eric Cole": "LONGSHOT",
-    "Johnny Keefer": "LONGSHOT",
-    "Matt McCarty": "LONGSHOT",
-    "Michael Thorbjornsen": "LONGSHOT",
-    "Ryan Gerard": "LONGSHOT",
-    "Sam Stevens": "LONGSHOT",
-    "Victor Perez": "LONGSHOT",
-    "Alex Smalley": "LONGSHOT",
-    "Daniel Brown": "LONGSHOT",
-    "Gary Woodland": "LONGSHOT",
-    "Jake Knapp": "LONGSHOT",
-    "Keita Nakajima": "LONGSHOT",
-    "Matthew Jordan": "LONGSHOT",
-    "Max Greyserman": "LONGSHOT",
-    "Nicolas Echavarria": "LONGSHOT",
-    "Antoine Rozner": "LONGSHOT",
-    "Kristoffer Reitan": "LONGSHOT",
-    "Martin Couvra": "LONGSHOT",
-    "Rasmus Neergaard-Petersen": "LONGSHOT",
-    "Adrien Saddier": "LONGSHOT",
-    "Bud Cauley": "LONGSHOT",
-    "Daniel Hillier": "LONGSHOT",
-    "Eugenio Chacarra": "LONGSHOT",
-    "Lucas Herbert": "LONGSHOT",
-    "Michael Brennan": "LONGSHOT",
-    "Pierceson Coody": "LONGSHOT",
-    "Ryo Hisatsune": "LONGSHOT",
-    "Jesper Svensson": "LONGSHOT",
-    "Andy Sullivan": "LONGSHOT",
-    "Angel Ayora": "LONGSHOT",
-    "Bernd Wiesberger": "LONGSHOT",
-    "Dan Bradbury": "LONGSHOT",
-    "Francesco Molinari": "LONGSHOT",
-    "Hennie du Plessis": "LONGSHOT",
-    "Jayden Schaper": "LONGSHOT",
-    "Joakim Lagergren": "LONGSHOT",
-    "John Parry": "LONGSHOT",
-    "Louis Oosthuizen": "LONGSHOT",
-    "Peter Uihlein": "LONGSHOT",
-    "Caleb Surratt": "LONGSHOT",
-    "Henrik Stenson": "LONGSHOT",
-    "Jackson Suber": "LONGSHOT",
-    "James Nicholas": "LONGSHOT",
-    "Kazuki Higa": "LONGSHOT",
-    "Padraig Harrington": "LONGSHOT",
-    "Scott Vincent": "LONGSHOT",
-    "Shaun Norris": "LONGSHOT",
-    "Travis Smyth": "LONGSHOT",
-    "Alistair Docherty": "WILDCARD",
-    "Austen Truslow": "WILDCARD",
-    "Baard Bjoernevik Skogen": "WILDCARD",
-    "Cameron John": "WILDCARD",
-    "Casey Jarvis": "WILDCARD",
-    "Francesco Laporta": "WILDCARD",
-    "Frederic Lacroix": "WILDCARD",
-    "Jack McDonald": "WILDCARD",
-    "Jeongwoo Ham": "WILDCARD",
-    "Jiho Yang": "WILDCARD",
-    "Jose Luis Ballester Barrio": "WILDCARD",
-    "Kazuma Kobori": "WILDCARD",
-    "Kota Kaneko": "WILDCARD",
-    "MJ Daffue": "WILDCARD",
-    "Marcus Plunkett": "WILDCARD",
-    "Matthew Baldwin": "WILDCARD",
-    "Matthew Southgate": "WILDCARD",
-    "Michael Hollick": "WILDCARD",
-    "Naoyuki Kataoka": "WILDCARD",
-    "Ren Yonezawa": "WILDCARD",
-    "Ryutaro Nagano": "WILDCARD",
-    "Sam Bairstow": "WILDCARD",
-    "Tiger Christensen": "WILDCARD",
-    "Tom Sloman": "WILDCARD",
-    "Lev Grinberg": "WILDCARD",
-    "Stewart Cink": "WILDCARD",
-    "Stuart Grehan": "WILDCARD",
-    "Tim Wiedemeyer": "WILDCARD",
-    "Alejandro De Castro Piera": "WILDCARD",
-    "Darren Clarke": "WILDCARD",
-    "David Duval": "WILDCARD",
-    "David Howard": "WILDCARD",
-    "Fifa Laopakdee": "WILDCARD",
-    "J.T. Poston": "WILDCARD",
-    "Jack Buchanan": "WILDCARD",
-    "Joe Dean": "WILDCARD",
-    "Mason Howell": "WILDCARD",
-    "Mateo Pulcini": "WILDCARD",
-    "Nevill Ruiter": "WILDCARD"
-}
+  },
+  "potTotal": 7130,
+  "overrides": {}
 };
