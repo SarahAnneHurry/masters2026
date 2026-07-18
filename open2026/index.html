@@ -185,10 +185,11 @@ footer{text-align:center;font-family:'IBM Plex Mono',monospace;font-size:9.5px;l
   <h2>Regler</h2>
   <p>Max 400 kr per deltagare · 3–5 spelare per lag · Max 1 ELITE + max 1 CONTENDER ·
   Resultatet är de <strong>3 bästa spelarnas</strong> sammanlagda score mot par efter 72 hål ·
-  Spelare 4 och 5 avgör vid lika · Potten delas 60 / 30 / 10.</p>
+  Spelare 4 och 5 avgör vid lika (saknas spelare 4/5 räknas den platsen som E) · Potten delas 60 / 30 / 10.</p>
   <div class="legend">
     <span class="under">RÖTT</span> = under par · <span class="over">BLÅTT</span> = över par ·
-    ● = räknas i bästa 3 · MC = missad cut (36-hålsresultatet står kvar)
+    ● = räknas i bästa 3 · MC = missad cut — 36-hålsresultatet står kvar och kan fortfarande räknas, <strong>ingen åker ut</strong> ·
+    ☠ = döda pengar: så mycket av laget som missade cutten
   </div>
 </section>
 
@@ -335,6 +336,18 @@ function processESPN(data, manual){
     const pos = (c.status && c.status.position && c.status.position.displayName) || '';
     live[name] = { rounds: effRounds, total: Object.keys(effRounds).length ? total : null, mc, pos };
   });
+
+  // ESPN:s feed saknar statusfält → räkna ut cutten själva (top 70 & lika efter 36 hål)
+  const done36 = Object.values(live).filter(p => p.rounds[1] !== undefined && p.rounds[2] !== undefined);
+  const r3Started = Object.values(live).some(p => p.rounds[3] !== undefined);
+  if (r3Started && done36.length >= 80){
+    const totals36 = done36.map(p => p.rounds[1] + p.rounds[2]).sort((a, b) => a - b);
+    const cutLine = totals36[69];
+    Object.values(live).forEach(p => {
+      if (p.rounds[3] === undefined && p.rounds[1] !== undefined && p.rounds[2] !== undefined
+          && p.rounds[1] + p.rounds[2] > cutLine) p.mc = true;
+    });
+  }
 
   S.live = live;
   S.lastSync = Date.now();
@@ -658,7 +671,7 @@ window.admAutoPot = () => {
 };
 window.admExport = (download) => {
   const out = 'window.POOL_DATA = ' + JSON.stringify(
-    {participants: PARTICIPANTS, prices: PRICE, potTotal: POT_TOTAL, overrides: OVERRIDES}, null, 2) + ';\n';
+    {participants: PARTICIPANTS, prices: PRICE, tiers: TIERS, potTotal: POT_TOTAL, overrides: OVERRIDES}, null, 2) + ';\n';
   if (download){
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([out], {type:'text/javascript'}));
