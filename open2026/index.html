@@ -69,6 +69,9 @@ body{font-family:'Public Sans',sans-serif;background:var(--sand);color:var(--ink
 .ptable tr.uncounted td{opacity:.5}
 .badge{display:inline-block;font-size:8.5px;letter-spacing:.08em;padding:1px 5px;border-radius:3px;margin-left:5px;vertical-align:1px}
 .badge.mc{background:var(--claret-light);color:var(--claret)}
+.row.oot .nm{color:var(--muted)}
+.row.oot .tot{opacity:.45}
+.row.oot .row-head{background:repeating-linear-gradient(-45deg,transparent,transparent 8px,rgba(0,0,0,.015) 8px,rgba(0,0,0,.015) 16px)}
 .badge.na{background:#eee9dc;color:var(--muted)}
 
 .ptable td sup{color:var(--gold-deep);font-size:8px;margin-left:1px}
@@ -185,10 +188,12 @@ footer{text-align:center;font-family:'IBM Plex Mono',monospace;font-size:9.5px;l
   <h2>Regler</h2>
   <p>Max 400 kr per deltagare · 3–5 spelare per lag · Max 1 ELITE + max 1 CONTENDER ·
   Resultatet är de <strong>3 bästa spelarnas</strong> sammanlagda score mot par efter 72 hål ·
-  Spelare 4 och 5 avgör vid lika (saknas spelare 4/5 räknas den platsen som E) · Potten delas 60 / 30 / 10.</p>
+  Spelare 4 och 5 avgör vid lika (saknas spelare 4/5 räknas den platsen som E) ·
+  Endast spelare som klarar cutten räknas — lag med <strong>färre än 3 spelare</strong> kvar efter cutten är ute ur prisstriden · Potten delas 60 / 30 / 10.</p>
   <div class="legend">
     <span class="under">RÖTT</span> = under par · <span class="over">BLÅTT</span> = över par ·
-    ● = räknas i bästa 3 · MC = missad cut — 36-hålsresultatet står kvar och kan fortfarande räknas, <strong>ingen åker ut</strong> ·
+    ● = räknas i bästa 3 · MC = missad cut (resultatet räknas ej) ·
+    ⚠ UTE = färre än 3 spelare klarade cutten ·
     ☠ = döda pengar: så mycket av laget som missade cutten
   </div>
 </section>
@@ -380,18 +385,20 @@ function teamScore(p){
   });
   // sortera på score (saknade/ospelade räknas som 0 = E tills data finns)
   const sortVal = pl => pl.total === null ? 0 : pl.total;
-  const bySc = [...scored].sort((a, b) => sortVal(a) - sortVal(b));
-  const best3 = bySc.slice(0, 3);
+  // Endast spelare som klarat cutten räknas. Färre än 3 giltiga → laget är UTE.
+  const valid = scored.filter(pl => !pl.mc).sort((a, b) => sortVal(a) - sortVal(b));
+  const out = valid.length < 3;
+  const best3 = valid.slice(0, 3);
   const sum3 = best3.reduce((a, p2) => a + sortVal(p2), 0);
-  const sum4 = bySc.slice(0, 4).reduce((a, p2) => a + sortVal(p2), 0);
-  const sum5 = bySc.reduce((a, p2) => a + sortVal(p2), 0);
+  const sum4 = valid.slice(0, 4).reduce((a, p2) => a + sortVal(p2), 0);
+  const sum5 = valid.reduce((a, p2) => a + sortVal(p2), 0);
   const countedNames = new Set(best3.map(p2 => p2.name));
-  return { scored, sum3, sum4, sum5, countedNames };
+  return { scored, sum3, sum4, sum5, countedNames, out };
 }
 
 function standings(){
   return PARTICIPANTS.map(p => ({ p, s: teamScore(p) }))
-    .sort((a, b) => a.s.sum3 - b.s.sum3 || a.s.sum4 - b.s.sum4 || a.s.sum5 - b.s.sum5);
+    .sort((a, b) => (a.s.out - b.s.out) || a.s.sum3 - b.s.sum3 || a.s.sum4 - b.s.sum4 || a.s.sum5 - b.s.sum5);
 }
 
 const fmtKr = n => Math.round(n).toLocaleString('sv-SE') + ' kr';
@@ -476,15 +483,16 @@ function render(){
       else if (d < 0) mv = `<div class="mv dn">▼${-d}</div>`;
     }
     // metarad: i pengarna + döda pengar
-    const meta = [`${t.p.players.filter(Boolean).length} SPELARE · BÄST 3`];
-    if (POT_TOTAL && hasLive && rk <= 3)
+    const meta = [t.s.out ? '<span class="dead">⚠ UTE — FÄRRE ÄN 3 KLARADE CUTTEN</span>'
+                          : `${t.p.players.filter(Boolean).length} SPELARE · BÄST 3`];
+    if (POT_TOTAL && hasLive && rk <= 3 && !t.s.out)
       meta.push(`<span class="pay">I PENGARNA: ${fmtKr(POT_TOTAL * [.6, .3, .1][rk - 1]).toUpperCase()}</span>`);
     const mcPl = t.s.scored.filter(pl => pl.mc);
     if (mcPl.length){
       const kr = mcPl.reduce((a, pl) => a + (PRICE[pl.name] || 0), 0);
       meta.push(`<span class="dead">☠ ${kr > 0 ? fmtKr(kr) + ' DÖDA PENGAR' : mcPl.length + ' MC'}</span>`);
     }
-    const champ = S.final && rk === 1;
+    const champ = S.final && rk === 1 && !t.s.out;
     const rows = t.s.scored.map(pl => {
       const counted = t.s.countedNames.has(pl.name);
       const badge = !pl.found && S.lastSync ? '<span class="badge na">EJ MATCHAD</span>'
@@ -504,11 +512,11 @@ function render(){
       </tr>`;
     }).join('');
     const isOpen = openNames.has(t.p.name);
-    return `<div class="row${champ ? ' champ' : ''}${isOpen ? ' open' : ''}" id="row${i}">
+    return `<div class="row${champ ? ' champ' : ''}${isOpen ? ' open' : ''}${t.s.out ? ' oot' : ''}" id="row${i}">
       ${champ ? '<div class="champ-ribbon">🏆 CHAMPION GOLFER OF THE POOL 🏆</div>' : ''}
       <div class="row-head" role="button" tabindex="0" aria-expanded="${isOpen}"
            onclick="toggleRow(${i})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleRow(${i})}">
-        <div class="rank ${rk <= 3 ? 'r' + rk : ''}">${rk}</div>
+        <div class="rank ${!t.s.out && rk <= 3 ? 'r' + rk : ''}">${t.s.out ? '–' : rk}</div>
         ${mv}
         <div class="who">
           <div class="nm">${t.p.name}</div>
