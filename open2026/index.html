@@ -72,6 +72,18 @@ body{font-family:'Public Sans',sans-serif;background:var(--sand);color:var(--ink
 .row.oot .nm{color:var(--muted)}
 .row.oot .tot{opacity:.45}
 .row.oot .row-head{background:repeating-linear-gradient(-45deg,transparent,transparent 8px,rgba(0,0,0,.015) 8px,rgba(0,0,0,.015) 16px)}
+
+/* ══ PARALLELLA UNIVERSUMET ══ */
+.side.alt{border-top:3px solid #6b5b95;background:linear-gradient(180deg,#f7f5fb,var(--paper) 60px)}
+.alt-sub{font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.12em;color:#6b5b95;margin:-4px 0 10px}
+.alt-row{display:flex;align-items:baseline;gap:8px;padding:5px 0;border-bottom:1px dashed var(--border);font-size:13px}
+.alt-row .ar{font-family:'IBM Plex Mono',monospace;font-size:11px;min-width:20px;color:var(--muted)}
+.alt-row:nth-child(1) .ar,.alt-row:nth-child(1) b{color:#6b5b95}
+.alt-row b{flex:1;font-weight:500;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.alt-row .ghost{font-size:11px}
+.alt-row .as{font-family:'IBM Plex Mono',monospace;font-size:12px}
+.alt-dead{margin-top:14px}
+.alt-dead .alt-row .as{color:var(--claret)}
 .badge.na{background:#eee9dc;color:var(--muted)}
 
 .ptable td sup{color:var(--gold-deep);font-size:8px;margin-left:1px}
@@ -183,6 +195,7 @@ footer{text-align:center;font-family:'IBM Plex Mono',monospace;font-size:9.5px;l
 <main id="board" aria-live="polite"></main>
 
 <section class="side" id="ownPanel" style="display:none;margin-top:14px"></section>
+<section class="side alt" id="altPanel" style="display:none;margin-top:14px"></section>
 
 <section class="rules">
   <h2>Regler</h2>
@@ -449,6 +462,46 @@ function renderOwnership(){
   el.style.display = 'block';
 }
 
+/* ── Parallella universumet: alla lag lever, MC-resultat räknas ── */
+function altScore(s){
+  const sortVal = pl => pl.total === null ? 0 : pl.total;
+  const by = [...s.scored].sort((a, b) => sortVal(a) - sortVal(b));
+  return { sum3: by.slice(0, 3).reduce((a, p2) => a + sortVal(p2), 0),
+           sum4: by.slice(0, 4).reduce((a, p2) => a + sortVal(p2), 0),
+           sum5: by.reduce((a, p2) => a + sortVal(p2), 0) };
+}
+
+function renderAltUniverse(){
+  const el = document.getElementById('altPanel');
+  const anyMc = PARTICIPANTS.some(p => teamScore(p).scored.some(pl => pl.mc));
+  if (!PARTICIPANTS.length || !S.lastSync || !anyMc){ el.style.display = 'none'; return; }
+
+  const alt = PARTICIPANTS.map(p => { const s = teamScore(p); return { p, s, a: altScore(s) }; })
+    .sort((x, y) => x.a.sum3 - y.a.sum3 || x.a.sum4 - y.a.sum4 || x.a.sum5 - y.a.sum5);
+
+  const rows = alt.map((t, i) => `<div class="alt-row">
+      <span class="ar">${i + 1}</span>
+      <b>${t.p.name}</b>${t.s.out ? '<span class="ghost" title="Ute i den officiella tävlingen — lever bara här">👻</span>' : ''}
+      <span class="as ${parClass(t.a.sum3)}">${fmtPar(t.a.sum3)}</span>
+    </div>`).join('');
+
+  const dead = PARTICIPANTS.map(p => {
+      const s = teamScore(p);
+      return { name: p.name, kr: s.scored.filter(pl => pl.mc).reduce((a, pl) => a + (PRICE[pl.name] || 0), 0) };
+    }).filter(d => d.kr > 0).sort((a, b) => b.kr - a.kr).slice(0, 3);
+  const deadRows = dead.map((d, i) => `<div class="alt-row">
+      <span class="ar">${['🔥','🥈','🥉'][i]}</span><b>${d.name}</b><span class="as">${fmtKr(d.kr)}</span>
+    </div>`).join('');
+
+  el.innerHTML = `<h3>🌌 PARALLELLA UNIVERSUMET</h3>
+    <div class="alt-sub">OM MC-RESULTATEN RÄKNADES · INOFFICIELLT · INGA PENGAR · BARA ÄRA</div>
+    ${rows}
+    ${dead.length ? `<div class="alt-dead"><h3>☠ DÖDA PENGAR-LIGAN</h3>
+      <div class="alt-sub">ÅRETS PLÅNBOKSBRAND KRÖNS PÅ SÖNDAG</div>${deadRows}</div>` : ''}
+    <div class="cutnote" style="margin-top:10px">👻 = ute i den officiella tävlingen. Den riktiga potten avgörs ovan — här spelar vi för hedern.</div>`;
+  el.style.display = 'block';
+}
+
 /* ── Rendering ────────────────────────────────────────────────── */
 function render(){
   if (PICK){ renderPick(); return; }
@@ -535,6 +588,7 @@ function render(){
   }).join('');
   renderCutPanel();
   renderOwnership();
+  renderAltUniverse();
   if (ADMIN) renderAdmin();
 }
 
